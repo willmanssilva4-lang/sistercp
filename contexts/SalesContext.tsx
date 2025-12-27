@@ -2,12 +2,15 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { Sale, Transaction, StockMovement } from '../types';
 import { supabase } from '../lib/supabaseClient';
 import { useProducts } from './ProductsContext';
+import { useFinance } from './FinanceContext';
+import { usePeople } from './PeopleContext';
 
 interface SalesContextType {
     sales: Sale[];
     loading: boolean;
     addSale: (sale: Sale) => Promise<void>;
     voidSale: (saleId: string) => Promise<void>;
+    returnItems: (saleId: string, itemsToReturn: { itemId: string, qty: number }[]) => Promise<void>;
     refreshSales: () => Promise<void>;
 }
 
@@ -16,7 +19,9 @@ const SalesContext = createContext<SalesContextType | undefined>(undefined);
 export const SalesProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [sales, setSales] = useState<Sale[]>([]);
     const [loading, setLoading] = useState(true);
-    const { products, adjustStock } = useProducts(); // Dependency on Products
+    const { products, kits, adjustStock } = useProducts();
+    const { addTransaction, transactions, deleteTransaction } = useFinance();
+    const { customers, updateCustomer } = usePeople();
 
     useEffect(() => {
         fetchSales();
@@ -80,6 +85,24 @@ export const SalesProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
 
     const addSale = async (sale: Sale) => {
+        // 0. Ensure User Exists in Public Table
+        if (sale.cashierId) {
+            const { error: userCheckError } = await supabase
+                .from('users')
+                .select('id')
+                .eq('id', sale.cashierId)
+                .single();
+
+            if (userCheckError && userCheckError.code === 'PGRST116') {
+                await supabase.from('users').insert([{
+                    id: sale.cashierId,
+                    name: 'Caixa',
+                    email: 'caixa@sistema',
+                    role: 'CASHIER'
+                }]);
+            }
+        }
+
         // 1. Insert Sale
         const { error: saleError } = await supabase.from('sales').insert([{
             id: sale.id,
@@ -94,20 +117,63 @@ export const SalesProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         if (saleError) throw saleError;
 
         // 2. Insert Items
-        const itemsToInsert = await Promise.all(sale.items.map(async (item) => {
-            // We need product_id. We have item.id which IS product_id in the cart logic of App.tsx
-            // But let's verify. In App.tsx: id: item.product_id. Yes.
-            return {
-                sale_id: sale.id,
-                product_id: item.id,
-                qty: item.qty,
-                applied_price: item.appliedPrice,
-                subtotal: item.subtotal
-            };
+        const itemsToInsert = sale.items.map((item) => ({
+            sale_id: sale.id,
+            product_id: item.id,
+            qty: item.qty,
+            applied_price: item.appliedPrice,
+            subtotal: item.subtotal
         }));
 
         const { error: itemsError } = await supabase.from('sale_items').insert(itemsToInsert);
         if (itemsError) throw itemsError;
+
+        // 3. Update Stock & Log Movements
+        for (const item of sale.items) {
+            const kitDef = kits.find(k => k.code === item.code);
+            if (kitDef) {
+                for (const kitItem of kitDef.items) {
+                    const prod = products.find(p => p.code === kitItem.productCode);
+                    if (prod) {
+                        await adjustStock(prod.id, 'EXIT', kitItem.qty * item.qty, `Venda Kit #${sale.id.slice(0, 6)}`);
+                    }
+                }
+            } else {
+                await adjustStock(item.id, 'EXIT', item.qty, `Venda #${sale.id.slice(0, 6)}`);
+            }
+        }
+
+        // 4. Add Finance Transaction
+        if (sale.paymentMethod !== 'FIADO') {
+            await addTransaction({
+                id: crypto.randomUUID(),
+                type: 'INCOME',
+                category: 'Venda',
+                amount: sale.total,
+                date: new Date().toISOString(),
+                description: `Venda #${sale.id.slice(0, 6)}`,
+                status: 'PAID'
+            });
+        } else {
+            await addTransaction({
+                id: crypto.randomUUID(),
+                type: 'INCOME',
+                category: 'Venda (Fiado)',
+                amount: sale.total,
+                date: new Date().toISOString(),
+                dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+                description: `Fiado - ${sale.customerName} #${sale.id.slice(0, 6)}`,
+                status: 'PENDING'
+            });
+
+            // Update Customer Debt
+            if (sale.customerId) {
+                const customer = customers.find(c => c.id === sale.customerId);
+                if (customer) {
+                    await updateCustomer({ ...customer, debtBalance: customer.debtBalance + sale.total });
+                }
+            }
+        }
 
         setSales(prev => [...prev, sale]);
     };
@@ -120,16 +186,63 @@ export const SalesProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         const { error } = await supabase.from('sales').update({ status: 'CANCELED' }).eq('id', saleId);
         if (error) throw error;
 
-        // 2. Restore Stock (Using ProductsContext)
+        // 2. Restore Stock
         for (const item of saleToVoid.items) {
             await adjustStock(item.id, 'ENTRY', item.qty, `Estorno Venda #${saleToVoid.id.slice(0, 6)}`);
+        }
+
+        // 3. Handle Finance
+        if (saleToVoid.paymentMethod !== 'FIADO') {
+            await addTransaction({
+                id: crypto.randomUUID(),
+                type: 'EXPENSE',
+                category: 'Estorno Completo',
+                amount: saleToVoid.total,
+                date: new Date().toISOString(),
+                description: `Estorno Venda #${saleToVoid.id.slice(0, 6)}`,
+                status: 'PAID'
+            });
+        } else {
+            const transactionToRemove = transactions.find(t => t.description.includes(saleToVoid.id.slice(0, 6)));
+            if (transactionToRemove) {
+                await deleteTransaction(transactionToRemove.id);
+            }
         }
 
         setSales(prev => prev.map(s => s.id === saleId ? { ...s, status: 'CANCELED' } : s));
     };
 
+    const returnItems = async (saleId: string, itemsToReturn: { itemId: string, qty: number }[]) => {
+        const saleSnapshot = sales.find(s => s.id === saleId);
+        if (!saleSnapshot) return;
+
+        let refundTotal = 0;
+        for (const r of itemsToReturn) {
+            const item = saleSnapshot.items.find(i => (i.cartItemId || i.id) === r.itemId);
+            if (item) {
+                refundTotal += (item.appliedPrice * r.qty);
+                await adjustStock(item.id, 'ENTRY', r.qty, `Devolução Venda #${saleId.slice(0, 6)}`);
+            }
+        }
+
+        if (refundTotal > 0 && saleSnapshot.paymentMethod !== 'FIADO') {
+            await addTransaction({
+                id: crypto.randomUUID(),
+                type: 'EXPENSE',
+                category: 'Devolução / Reembolso',
+                amount: refundTotal,
+                date: new Date().toISOString(),
+                description: `Devolução Venda #${saleId.slice(0, 6)}`,
+                status: 'PAID'
+            });
+        }
+
+        // Update local state (simplified: refresh from DB or update manually)
+        await fetchSales();
+    };
+
     return (
-        <SalesContext.Provider value={{ sales, loading, addSale, voidSale, refreshSales: fetchSales }}>
+        <SalesContext.Provider value={{ sales, loading, addSale, voidSale, returnItems, refreshSales: fetchSales }}>
             {children}
         </SalesContext.Provider>
     );

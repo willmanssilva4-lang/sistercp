@@ -1,6 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Product, ProductKit, Promotion, StockMovement } from '../types';
 import { supabase } from '../lib/supabaseClient';
+import { useFinance } from './FinanceContext';
+import { usePeople } from './PeopleContext';
+import { createStockBatch } from '../src/utils/pepsUtils';
 
 interface ProductsContextType {
   products: Product[];
@@ -18,6 +21,9 @@ interface ProductsContextType {
   addPromotion: (p: Promotion) => Promise<void>;
   updatePromotion: (p: Promotion) => Promise<void>;
   deletePromotion: (id: string) => Promise<void>;
+  deletePromotion: (id: string) => Promise<void>;
+  processPurchase: (purchase: any) => Promise<void>;
+  cancelPurchase: (transactionId: string) => Promise<void>;
   refreshProducts: () => Promise<void>;
 }
 
@@ -29,6 +35,8 @@ export const ProductsProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [stockMovements, setStockMovements] = useState<StockMovement[]>([]);
   const [loading, setLoading] = useState(true);
+  const { addTransaction, transactions, deleteTransaction } = useFinance();
+  const { suppliers, addSupplier } = usePeople();
 
   // Initial Data Load
   useEffect(() => {
@@ -207,7 +215,7 @@ export const ProductsProvider: React.FC<{ children: ReactNode }> = ({ children }
         date: new Date().toISOString(),
         reason: 'Ajuste Manual de Estoque (Edição)'
       };
-      
+
       await supabase.from('stock_movements').insert([{
         id: movement.id,
         product_id: movement.productId,
@@ -216,7 +224,7 @@ export const ProductsProvider: React.FC<{ children: ReactNode }> = ({ children }
         date: movement.date,
         reason: movement.reason
       }]);
-      
+
       setStockMovements(prev => [...prev, movement]);
     }
 
@@ -239,7 +247,7 @@ export const ProductsProvider: React.FC<{ children: ReactNode }> = ({ children }
 
     const { error } = await supabase.from('products').update(dbProduct).eq('id', p.id);
     if (error) throw error;
-    
+
     setProducts(prev => prev.map(curr => curr.id === p.id ? p : curr));
   };
 
@@ -382,6 +390,120 @@ export const ProductsProvider: React.FC<{ children: ReactNode }> = ({ children }
     const { error } = await supabase.from('promotions').delete().eq('id', id);
     if (error) throw error;
     setPromotions(prev => prev.filter(p => p.id !== id));
+  };
+
+  const processPurchase = async (purchase: any) => {
+    // 0. Auto-register Supplier if new
+    if (purchase.supplier) {
+      const existingSupplier = suppliers.find(s => s.name.toLowerCase() === purchase.supplier.toLowerCase());
+      if (!existingSupplier) {
+        await addSupplier({
+          id: crypto.randomUUID(),
+          name: purchase.supplier,
+          active: true,
+          cnpj: '', phone: '', email: '', address: '', contactPerson: '', paymentTerms: '', notes: ''
+        });
+      }
+    }
+
+    // 1. Update Stock & Log Movements
+    for (const item of purchase.items) {
+      await adjustStock(item.id, 'ENTRY', item.qty, `Compra - ${purchase.supplier}`);
+
+      // Update price and expiry
+      const productUpdate: any = {
+        cost_price: item.costPrice,
+        retail_price: item.retailPrice
+      };
+      if (item.expiryDate) productUpdate.expiry_date = item.expiryDate;
+      await supabase.from('products').update(productUpdate).eq('id', item.id);
+    }
+
+    // 2. Add Expense Transaction(s)
+    if (purchase.entryType === 'PURCHASE') {
+      const purchaseItems = purchase.items.map((i: any) => ({
+        name: i.name,
+        code: i.code,
+        qty: i.qty,
+        costPrice: i.costPrice
+      }));
+
+      const numInstallments = purchase.installments || 1;
+      const installmentValue = purchase.total / numInstallments;
+      const baseDate = new Date(purchase.dueDate || purchase.date);
+      const intervalDays = purchase.installmentInterval || 30;
+
+      for (let i = 0; i < numInstallments; i++) {
+        const currentDate = new Date(baseDate);
+        currentDate.setDate(baseDate.getDate() + (i * intervalDays));
+
+        const transactionId = crypto.randomUUID();
+        await addTransaction({
+          id: transactionId,
+          type: 'EXPENSE',
+          category: 'Fornecedores (Estoque)',
+          amount: installmentValue,
+          date: purchase.date,
+          dueDate: currentDate.toISOString().split('T')[0],
+          description: `Compra - ${purchase.supplier}${numInstallments > 1 ? ` (Parc ${i + 1}/${numInstallments})` : ''}`,
+          status: purchase.status || 'PENDING',
+          items: purchaseItems
+        });
+
+        // Save Transaction Items to Supabase (manual for now as addTransaction doesn't handle items)
+        const itemsToInsert = purchase.items.map((item: any) => ({
+          transaction_id: transactionId,
+          product_id: item.id,
+          qty: item.qty,
+          cost_price: item.costPrice,
+          expiry_date: item.expiryDate || null
+        }));
+        await supabase.from('transaction_items').insert(itemsToInsert);
+
+        // PEPS Batches (only for the first transaction or if not installment)
+        if (i === 0) {
+          for (const item of purchase.items) {
+            await createStockBatch(item.id, transactionId, item.qty, item.costPrice, purchase.date, item.expiryDate);
+          }
+        }
+      }
+    } else {
+      // DONATION, etc.
+      for (const item of purchase.items) {
+        await createStockBatch(item.id, '', item.qty, item.costPrice, purchase.date, item.expiryDate);
+      }
+    }
+
+    await refreshProducts();
+  };
+
+  const cancelPurchase = async (transactionId: string) => {
+    const purchaseTransaction = transactions.find(t => t.id === transactionId);
+    if (!purchaseTransaction || !purchaseTransaction.items) return;
+
+    // 1. Revert Stock
+    for (const item of purchaseTransaction.items) {
+      const prod = products.find(p => p.code === item.code);
+      if (prod) {
+        await adjustStock(prod.id, 'EXIT', item.qty, `Cancelamento Compra - ${purchaseTransaction.description}`);
+      }
+    }
+
+    // 2. Delete Transactions
+    await deleteTransaction(transactionId);
+
+    // Handle related installments
+    const baseDescription = purchaseTransaction.description.includes('(')
+      ? purchaseTransaction.description.split('(')[0].trim()
+      : purchaseTransaction.description;
+
+    const related = transactions.filter(t =>
+      t.id !== transactionId &&
+      t.description.startsWith(baseDescription)
+    );
+    for (const r of related) await deleteTransaction(r.id);
+
+    await refreshProducts();
   };
 
   return (

@@ -18,15 +18,15 @@ root.render(
   <React.StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <ProductsProvider>
-          <SalesProvider>
-            <FinanceProvider>
-              <PeopleProvider>
+        <FinanceProvider>
+          <PeopleProvider>
+            <ProductsProvider>
+              <SalesProvider>
                 <App />
-              </PeopleProvider>
-            </FinanceProvider>
-          </SalesProvider>
-        </ProductsProvider>
+              </SalesProvider>
+            </ProductsProvider>
+          </PeopleProvider>
+        </FinanceProvider>
       </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>
