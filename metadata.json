@@ -1,0 +1,7 @@
+{
+  "name": "MarketMaster AI",
+  "description": "A comprehensive Supermarket Management System featuring POS, Inventory Control, Finance, and Gemini AI-powered business insights.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
