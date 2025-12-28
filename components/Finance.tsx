@@ -259,13 +259,13 @@ const Finance: React.FC<FinanceProps> = ({ transactions, onAddTransaction, onUpd
     };
 
     return (
-        <div className="p-6 space-y-6">
-            <div className="flex justify-between items-center">
+        <div className="p-4 md:p-6 space-y-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h2 className="text-2xl font-bold text-gray-800">Módulo Financeiro</h2>
                     <p className="text-gray-500 text-sm">Gestão de fluxo de caixa e contas</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                     <button
                         onClick={() => onNavigate && onNavigate('profit-margin')}
                         className="bg-purple-600 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 hover:bg-purple-700 shadow-lg shadow-purple-200 transition-all"
@@ -294,7 +294,7 @@ const Finance: React.FC<FinanceProps> = ({ transactions, onAddTransaction, onUpd
             </div>
 
             {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
                     <div className="flex justify-between items-start mb-2">
                         <span className="text-gray-500 text-sm font-medium">Saldo em Caixa</span>
@@ -497,76 +497,78 @@ const Finance: React.FC<FinanceProps> = ({ transactions, onAddTransaction, onUpd
 
                                     {/* Transactions in this category - Only show when expanded */}
                                     {isExpanded && (
-                                        <div className="bg-white divide-y divide-gray-100">
-                                            {categoryTransactions.map(t => {
-                                                const overdue = isOverdue(t);
-                                                return (
-                                                    <div key={t.id} className="p-4 hover:bg-gray-50 transition-colors">
-                                                        <div className="flex justify-between items-start gap-4">
-                                                            {/* Left Section - Main Info */}
-                                                            <div className="flex-1 space-y-1">
-                                                                <h5 className="font-medium text-gray-800">{t.description}</h5>
-                                                                <div className="flex items-center gap-4 text-sm text-gray-600">
-                                                                    <div className="flex items-center gap-1">
-                                                                        <span className="font-medium">Data:</span>
-                                                                        <span>{new Date(t.date).toLocaleDateString('pt-BR')}</span>
-                                                                    </div>
-                                                                    {t.dueDate && t.status === 'PENDING' && (
-                                                                        <div className={`flex items-center gap-1 ${overdue ? 'text-red-600 font-bold' : ''}`}>
-                                                                            <span className="font-medium">Vence:</span>
-                                                                            <span>{new Date(t.dueDate).toLocaleDateString('pt-BR')}</span>
+                                        <div className="bg-white divide-y divide-gray-100 overflow-x-auto">
+                                            <div className="min-w-[600px] divide-y divide-gray-100">
+                                                {categoryTransactions.map(t => {
+                                                    const overdue = isOverdue(t);
+                                                    return (
+                                                        <div key={t.id} className="p-4 hover:bg-gray-50 transition-colors">
+                                                            <div className="flex justify-between items-start gap-4">
+                                                                {/* Left Section - Main Info */}
+                                                                <div className="flex-1 space-y-1">
+                                                                    <h5 className="font-medium text-gray-800">{t.description}</h5>
+                                                                    <div className="flex items-center gap-4 text-sm text-gray-600">
+                                                                        <div className="flex items-center gap-1">
+                                                                            <span className="font-medium">Data:</span>
+                                                                            <span>{new Date(t.date).toLocaleDateString('pt-BR')}</span>
                                                                         </div>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-
-                                                            {/* Right Section - Value & Actions */}
-                                                            <div className="flex items-center gap-4">
-                                                                <div className={`text-lg font-bold ${t.type === 'INCOME' ? 'text-emerald-600' : 'text-red-600'}`}>
-                                                                    {t.type === 'INCOME' ? '+' : '-'} R$ {t.amount.toFixed(2)}
-                                                                </div>
-
-                                                                <div className="flex items-center gap-2">
-                                                                    {t.status === 'PAID' ? (
-                                                                        <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full text-xs font-bold">
-                                                                            <CheckCircle2 size={12} /> Confirmado
-                                                                        </span>
-                                                                    ) : (
-                                                                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold ${overdue ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                                                                            <Clock size={12} /> {overdue ? 'Atrasado' : 'Pendente'}
-                                                                        </span>
-                                                                    )}
+                                                                        {t.dueDate && t.status === 'PENDING' && (
+                                                                            <div className={`flex items-center gap-1 ${overdue ? 'text-red-600 font-bold' : ''}`}>
+                                                                                <span className="font-medium">Vence:</span>
+                                                                                <span>{new Date(t.dueDate).toLocaleDateString('pt-BR')}</span>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
 
-                                                                <div className="flex gap-1">
-                                                                    {t.status === 'PENDING' && (
+                                                                {/* Right Section - Value & Actions */}
+                                                                <div className="flex items-center gap-4">
+                                                                    <div className={`text-lg font-bold ${t.type === 'INCOME' ? 'text-emerald-600' : 'text-red-600'}`}>
+                                                                        {t.type === 'INCOME' ? '+' : '-'} R$ {t.amount.toFixed(2)}
+                                                                    </div>
+
+                                                                    <div className="flex items-center gap-2">
+                                                                        {t.status === 'PAID' ? (
+                                                                            <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full text-xs font-bold">
+                                                                                <CheckCircle2 size={12} /> Confirmado
+                                                                            </span>
+                                                                        ) : (
+                                                                            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold ${overdue ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                                                                <Clock size={12} /> {overdue ? 'Atrasado' : 'Pendente'}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+
+                                                                    <div className="flex gap-1">
+                                                                        {t.status === 'PENDING' && (
+                                                                            <button
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    onUpdateStatus(t.id, 'PAID');
+                                                                                }}
+                                                                                title="Marcar como Pago/Recebido"
+                                                                                className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                                                                            >
+                                                                                <CheckCircle2 size={16} />
+                                                                            </button>
+                                                                        )}
                                                                         <button
                                                                             onClick={(e) => {
                                                                                 e.stopPropagation();
-                                                                                onUpdateStatus(t.id, 'PAID');
+                                                                                onDeleteTransaction(t.id);
                                                                             }}
-                                                                            title="Marcar como Pago/Recebido"
-                                                                            className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                                                                            title="Excluir lançamento"
+                                                                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                                                         >
-                                                                            <CheckCircle2 size={16} />
+                                                                            <Trash2 size={16} />
                                                                         </button>
-                                                                    )}
-                                                                    <button
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            onDeleteTransaction(t.id);
-                                                                        }}
-                                                                        title="Excluir lançamento"
-                                                                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                                    >
-                                                                        <Trash2 size={16} />
-                                                                    </button>
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                );
-                                            })}
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
                                     )}
                                 </div>

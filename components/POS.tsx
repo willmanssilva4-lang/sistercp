@@ -28,6 +28,7 @@ const POS: React.FC<POSProps> = ({ products, promotions = [], kits = [], onProce
     const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
     const [customerSearchTerm, setCustomerSearchTerm] = useState('');
     const [lastScanned, setLastScanned] = useState<string | null>(null);
+    const [mobileView, setMobileView] = useState<'SEARCH' | 'CART'>('SEARCH');
 
     // Selection & Focus
     const [selectedCartIndex, setSelectedCartIndex] = useState<number>(-1); // -1 means search focus, >= 0 means cart item selected
@@ -632,10 +633,10 @@ const POS: React.FC<POSProps> = ({ products, promotions = [], kits = [], onProce
     }, []);
 
     return (
-        <div className="flex h-screen bg-gray-100 flex-col" onKeyDown={handleGlobalKeyDown}>
-            <div className="flex-1 flex overflow-hidden">
+        <div className="flex h-screen bg-gray-100 flex-col overflow-hidden" onKeyDown={handleGlobalKeyDown}>
+            <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
                 {/* Left: Search & Products */}
-                <div className="w-1/2 p-4 flex flex-col gap-4">
+                <div className={`w-full md:w-1/2 p-4 flex flex-col gap-4 h-full ${mobileView === 'SEARCH' ? 'flex' : 'hidden md:flex'}`}>
                     {/* Search Box */}
                     <div className={`bg-white p-6 rounded-xl shadow-sm border-l-4 transition-all ${selectedCartIndex === -1 ? 'border-emerald-500 ring-2 ring-emerald-100' : 'border-gray-300 opacity-80'}`}>
                         <div className="flex justify-between items-center mb-2">
@@ -722,7 +723,7 @@ const POS: React.FC<POSProps> = ({ products, promotions = [], kits = [], onProce
                 </div>
 
                 {/* Right: Cart */}
-                <div className={`w-1/2 bg-white border-l shadow-xl flex flex-col z-10 transition-colors ${selectedCartIndex !== -1 ? 'ring-4 ring-inset ring-blue-400/50' : ''}`}>
+                <div className={`w-full md:w-1/2 bg-white border-l shadow-xl flex flex-col z-10 transition-colors h-full ${mobileView === 'CART' ? 'flex' : 'hidden md:flex'} ${selectedCartIndex !== -1 ? 'ring-4 ring-inset ring-blue-400/50' : ''}`}>
                     {/* Header */}
                     <div className="bg-slate-900 text-white p-5 shadow-md">
 
@@ -812,8 +813,31 @@ const POS: React.FC<POSProps> = ({ products, promotions = [], kits = [], onProce
                 </div>
             </div>
 
+            {/* Mobile Navigation Bar */}
+            <div className="md:hidden flex border-t bg-white h-16 shrink-0">
+                <button
+                    onClick={() => setMobileView('SEARCH')}
+                    className={`flex-1 flex flex-col items-center justify-center gap-1 ${mobileView === 'SEARCH' ? 'text-emerald-600 bg-emerald-50' : 'text-gray-500'}`}
+                >
+                    <Search size={20} />
+                    <span className="text-[10px] font-bold uppercase">Produtos</span>
+                </button>
+                <button
+                    onClick={() => setMobileView('CART')}
+                    className={`flex-1 flex flex-col items-center justify-center gap-1 relative ${mobileView === 'CART' ? 'text-blue-600 bg-blue-50' : 'text-gray-500'}`}
+                >
+                    <ShoppingCart size={20} />
+                    <span className="text-[10px] font-bold uppercase">Carrinho</span>
+                    {cart.length > 0 && (
+                        <span className="absolute top-2 right-1/3 bg-red-500 text-white text-[10px] font-bold px-1.5 rounded-full min-w-[18px] text-center">
+                            {cart.reduce((a, b) => a + b.qty, 0)}
+                        </span>
+                    )}
+                </button>
+            </div>
+
             {/* FOOTER SHORTCUTS LEGEND */}
-            <div className="bg-slate-800 text-slate-400 text-xs py-2 px-4 flex justify-between items-center border-t border-slate-700">
+            <div className="hidden md:flex bg-slate-800 text-slate-400 text-xs py-2 px-4 justify-between items-center border-t border-slate-700">
                 <div className="flex gap-4">
                     <span className="flex items-center gap-1"><kbd className="bg-slate-700 px-1.5 rounded text-white font-mono border border-slate-600">F1</kbd> Sair</span>
                     <span className="flex items-center gap-1"><kbd className="bg-slate-700 px-1.5 rounded text-white font-mono border border-slate-600">F2</kbd> Pagar</span>

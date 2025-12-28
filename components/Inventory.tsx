@@ -589,10 +589,10 @@ const Inventory: React.FC<InventoryProps> = ({ products, stockMovements, onAddPr
         : [];
 
     return (
-        <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
+        <div className="p-4 md:p-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                 <h2 className="text-2xl font-bold text-gray-800">Estoque de Produtos</h2>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                     <button
                         onClick={() => openAdjustment()}
                         className="bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-orange-700 transition-colors shadow-sm"
@@ -652,68 +652,70 @@ const Inventory: React.FC<InventoryProps> = ({ products, stockMovements, onAddPr
                     </div>
                 </div>
 
-                <table className="w-full text-left">
-                    <thead className="bg-gray-50 text-gray-600 font-semibold text-sm">
-                        <tr>
-                            <th className="p-4">Produto</th>
-                            <th className="p-4">Categoria / Marca</th>
-                            <th className="p-4">Preço (Varejo)</th>
-                            <th className="p-4">Estoque</th>
-                            <th className="p-4 text-center">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                        {filtered.map(p => (
-                            <tr key={p.id} className="hover:bg-gray-50 transition-colors">
-                                <td className="p-4">
-                                    <div className="font-medium text-gray-800">{p.name}</div>
-                                    <div className="text-xs text-gray-500">Cod: {p.code}</div>
-                                </td>
-                                <td className="p-4 text-sm text-gray-600">
-                                    <div className="flex flex-col gap-1">
-                                        <span className="bg-gray-100 px-2 py-0.5 rounded text-xs uppercase font-bold w-fit">
-                                            {p.category} {p.subcategory && <span className="text-gray-500 font-normal">/ {p.subcategory}</span>}
-                                        </span>
-                                        {p.brand && <span className="text-xs text-gray-400">{p.brand}</span>}
-                                    </div>
-                                </td>
-                                <td className="p-4 text-sm font-bold text-gray-800">R$ {p.retailPrice.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}</td>
-                                <td className="p-4">
-                                    <div className={`flex items-center gap-2 text-sm font-bold ${p.stock <= p.minStock ? 'text-red-600' : 'text-emerald-600'}`}>
-                                        <Package size={16} />
-                                        {p.stock} {p.unit}
-                                    </div>
-                                </td>
-                                <td className="p-4 flex justify-center gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => openAdjustment(p)}
-                                        className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg"
-                                        title="Ajuste Manual / Baixa de Estoque"
-                                    >
-                                        <ArrowLeftRight size={18} />
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => openEdit(p)}
-                                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
-                                        title="Editar Cadastro"
-                                    >
-                                        <Edit size={18} />
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={(e) => { e.stopPropagation(); onDeleteProduct(p.id); }}
-                                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg pointer-events-auto"
-                                        title="Excluir Produto"
-                                    >
-                                        <Trash2 size={18} className="pointer-events-none" />
-                                    </button>
-                                </td>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left min-w-[600px]">
+                        <thead className="bg-gray-50 text-gray-600 font-semibold text-sm">
+                            <tr>
+                                <th className="p-4">Produto</th>
+                                <th className="p-4">Categoria / Marca</th>
+                                <th className="p-4">Preço (Varejo)</th>
+                                <th className="p-4">Estoque</th>
+                                <th className="p-4 text-center">Ações</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {filtered.map(p => (
+                                <tr key={p.id} className="hover:bg-gray-50 transition-colors">
+                                    <td className="p-4">
+                                        <div className="font-medium text-gray-800">{p.name}</div>
+                                        <div className="text-xs text-gray-500">Cod: {p.code}</div>
+                                    </td>
+                                    <td className="p-4 text-sm text-gray-600">
+                                        <div className="flex flex-col gap-1">
+                                            <span className="bg-gray-100 px-2 py-0.5 rounded text-xs uppercase font-bold w-fit">
+                                                {p.category} {p.subcategory && <span className="text-gray-500 font-normal">/ {p.subcategory}</span>}
+                                            </span>
+                                            {p.brand && <span className="text-xs text-gray-400">{p.brand}</span>}
+                                        </div>
+                                    </td>
+                                    <td className="p-4 text-sm font-bold text-gray-800">R$ {p.retailPrice.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}</td>
+                                    <td className="p-4">
+                                        <div className={`flex items-center gap-2 text-sm font-bold ${p.stock <= p.minStock ? 'text-red-600' : 'text-emerald-600'}`}>
+                                            <Package size={16} />
+                                            {p.stock} {p.unit}
+                                        </div>
+                                    </td>
+                                    <td className="p-4 flex justify-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => openAdjustment(p)}
+                                            className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg"
+                                            title="Ajuste Manual / Baixa de Estoque"
+                                        >
+                                            <ArrowLeftRight size={18} />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => openEdit(p)}
+                                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                                            title="Editar Cadastro"
+                                        >
+                                            <Edit size={18} />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={(e) => { e.stopPropagation(); onDeleteProduct(p.id); }}
+                                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg pointer-events-auto"
+                                            title="Excluir Produto"
+                                        >
+                                            <Trash2 size={18} className="pointer-events-none" />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
                 {filtered.length === 0 && (
                     <div className="p-8 text-center text-gray-500">Nenhum produto encontrado.</div>
                 )}

@@ -1745,8 +1745,8 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
 
     if (currentView) {
         return (
-            <div className="p-6 h-full flex flex-col">
-                <div className="flex justify-between items-center mb-6">
+            <div className="p-4 md:p-6 h-full flex flex-col">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                     <div className="flex items-center gap-3">
                         <button onClick={() => setCurrentView(null)} className="p-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:from-emerald-700 hover:to-teal-700 rounded-full transition-colors shadow-md">
                             <ArrowLeft size={20} />
@@ -1889,180 +1889,186 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
                 </div>
 
                 {/* Manage Sale Modal */}
-                {manageSale && (
-                    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                        <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl animate-scale-in">
-                            <div className="p-5 border-b flex justify-between items-center bg-gray-50 rounded-t-2xl">
-                                <h3 className="font-bold text-gray-800">Gerenciar Venda #{manageSale.id.slice(0, 6)}</h3>
-                                <button onClick={() => { setManageSale(null); setIsReturnMode(false); }} className="text-gray-400 hover:text-gray-600"><Ban size={20} /></button>
-                            </div>
-                            <div className="p-6 space-y-4">
-                                <div className="bg-blue-50 p-4 rounded-lg text-sm text-blue-800">
-                                    <p><strong>Cliente:</strong> {manageSale.customerName || 'N/A'}</p>
-                                    <p><strong>Total:</strong> R$ {manageSale.total.toFixed(2)}</p>
-                                    <p><strong>Pagamento:</strong> {translatePayment(manageSale.paymentMethod)}</p>
+                {
+                    manageSale && (
+                        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                            <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl animate-scale-in">
+                                <div className="p-5 border-b flex justify-between items-center bg-gray-50 rounded-t-2xl">
+                                    <h3 className="font-bold text-gray-800">Gerenciar Venda #{manageSale.id.slice(0, 6)}</h3>
+                                    <button onClick={() => { setManageSale(null); setIsReturnMode(false); }} className="text-gray-400 hover:text-gray-600"><Ban size={20} /></button>
                                 </div>
+                                <div className="p-6 space-y-4">
+                                    <div className="bg-blue-50 p-4 rounded-lg text-sm text-blue-800">
+                                        <p><strong>Cliente:</strong> {manageSale.customerName || 'N/A'}</p>
+                                        <p><strong>Total:</strong> R$ {manageSale.total.toFixed(2)}</p>
+                                        <p><strong>Pagamento:</strong> {translatePayment(manageSale.paymentMethod)}</p>
+                                    </div>
 
-                                {isReturnMode ? (
-                                    <div className="space-y-4">
-                                        <p className="text-sm font-bold text-gray-700">Selecione os itens para devolver:</p>
-                                        <div className="max-h-60 overflow-y-auto border rounded-lg">
-                                            <table className="w-full text-sm text-left">
-                                                <thead className="bg-gray-100 text-gray-500 sticky top-0">
-                                                    <tr>
-                                                        <th className="p-2">Produto</th>
-                                                        <th className="p-2 text-center">Comprado</th>
-                                                        <th className="p-2 text-center">Devolver</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y">
-                                                    {manageSale.items.map((item, idx) => (
-                                                        <tr key={idx}>
-                                                            <td className="p-2">{item.name}</td>
-                                                            <td className="p-2 text-center">{item.qty}</td>
-                                                            <td className="p-2 flex justify-center items-center gap-2">
-                                                                <button type="button" onClick={() => toggleReturnQty(item.cartItemId || item.id, item.qty, -1)} className="bg-gray-200 w-6 h-6 rounded font-bold hover:bg-gray-300">-</button>
-                                                                <span className="w-8 text-center font-bold text-red-600">{returnQuantities[item.cartItemId || item.id] || 0}</span>
-                                                                <button type="button" onClick={() => toggleReturnQty(item.cartItemId || item.id, item.qty, 1)} className="bg-gray-200 w-6 h-6 rounded font-bold hover:bg-gray-300">+</button>
-                                                            </td>
+                                    {isReturnMode ? (
+                                        <div className="space-y-4">
+                                            <p className="text-sm font-bold text-gray-700">Selecione os itens para devolver:</p>
+                                            <div className="max-h-60 overflow-y-auto border rounded-lg">
+                                                <table className="w-full text-sm text-left">
+                                                    <thead className="bg-gray-100 text-gray-500 sticky top-0">
+                                                        <tr>
+                                                            <th className="p-2">Produto</th>
+                                                            <th className="p-2 text-center">Comprado</th>
+                                                            <th className="p-2 text-center">Devolver</th>
                                                         </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-
-                                        <div className="bg-red-50 p-3 rounded-lg flex justify-between items-center border border-red-100">
-                                            <div>
-                                                <p className="text-red-700 font-bold">Total Reembolso:</p>
-                                                <p className="text-xs text-red-500">{Object.values(returnQuantities).reduce((a: number, b: number) => a + b, 0)} itens selecionados</p>
+                                                    </thead>
+                                                    <tbody className="divide-y">
+                                                        {manageSale.items.map((item, idx) => (
+                                                            <tr key={idx}>
+                                                                <td className="p-2">{item.name}</td>
+                                                                <td className="p-2 text-center">{item.qty}</td>
+                                                                <td className="p-2 flex justify-center items-center gap-2">
+                                                                    <button type="button" onClick={() => toggleReturnQty(item.cartItemId || item.id, item.qty, -1)} className="bg-gray-200 w-6 h-6 rounded font-bold hover:bg-gray-300">-</button>
+                                                                    <span className="w-8 text-center font-bold text-red-600">{returnQuantities[item.cartItemId || item.id] || 0}</span>
+                                                                    <button type="button" onClick={() => toggleReturnQty(item.cartItemId || item.id, item.qty, 1)} className="bg-gray-200 w-6 h-6 rounded font-bold hover:bg-gray-300">+</button>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
                                             </div>
-                                            <p className="text-xl font-black text-red-600">
-                                                R$ {Object.entries(returnQuantities).reduce((acc: number, [id, qty]) => {
-                                                    const item = manageSale.items.find(i => (i.cartItemId || i.id) === id);
-                                                    return acc + (item ? item.appliedPrice * (qty as number) : 0);
-                                                }, 0).toFixed(2)}
-                                            </p>
-                                        </div>
 
-                                        <div className="flex gap-2">
-                                            <button type="button" onClick={() => setIsReturnMode(false)} className="flex-1 py-3 border rounded-lg text-gray-500 hover:bg-gray-50 font-bold">Voltar</button>
+                                            <div className="bg-red-50 p-3 rounded-lg flex justify-between items-center border border-red-100">
+                                                <div>
+                                                    <p className="text-red-700 font-bold">Total Reembolso:</p>
+                                                    <p className="text-xs text-red-500">{Object.values(returnQuantities).reduce((a: number, b: number) => a + b, 0)} itens selecionados</p>
+                                                </div>
+                                                <p className="text-xl font-black text-red-600">
+                                                    R$ {Object.entries(returnQuantities).reduce((acc: number, [id, qty]) => {
+                                                        const item = manageSale.items.find(i => (i.cartItemId || i.id) === id);
+                                                        return acc + (item ? item.appliedPrice * (qty as number) : 0);
+                                                    }, 0).toFixed(2)}
+                                                </p>
+                                            </div>
+
+                                            <div className="flex gap-2">
+                                                <button type="button" onClick={() => setIsReturnMode(false)} className="flex-1 py-3 border rounded-lg text-gray-500 hover:bg-gray-50 font-bold">Voltar</button>
+                                                <button
+                                                    type="button"
+                                                    onClick={confirmPartialReturn}
+                                                    className="flex-1 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold shadow-lg shadow-red-200"
+                                                >
+                                                    Confirmar Devolução
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-2 gap-4">
                                             <button
                                                 type="button"
-                                                onClick={confirmPartialReturn}
-                                                className="flex-1 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold shadow-lg shadow-red-200"
+                                                onClick={() => {
+                                                    if (currentUser.role === 'ADMIN' || currentUser.role === 'MANAGER') {
+                                                        setIsReturnMode(true);
+                                                    } else {
+                                                        setShowPermissionDenied(true);
+                                                    }
+                                                }}
+                                                className="p-4 border-2 border-orange-100 bg-orange-50 rounded-xl hover:bg-orange-100 hover:border-orange-300 transition-all text-orange-700 font-bold flex flex-col items-center gap-2"
                                             >
-                                                Confirmar Devolução
+                                                <RotateCcw size={24} className="pointer-events-none" /> Devolução de Produtos
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+
+                                                    if (currentUser.role === 'ADMIN' || currentUser.role === 'MANAGER') {
+                                                        // Removed confirm dialog to ensure execution if browser blocks it
+                                                        if (onVoidSale) {
+                                                            onVoidSale(manageSale.id);
+                                                            setManageSale(null);
+                                                        } else {
+                                                            console.error("Função de cancelamento indisponível");
+                                                        }
+                                                    } else {
+                                                        setShowPermissionDenied(true);
+                                                    }
+                                                }}
+                                                className="p-4 border-2 border-red-100 bg-red-50 rounded-xl hover:bg-red-100 hover:border-red-300 transition-all text-red-700 font-bold flex flex-col items-center gap-2"
+                                            >
+                                                <Ban size={24} className="pointer-events-none" /> Cancelar Venda (Estorno)
                                             </button>
                                         </div>
-                                    </div>
-                                ) : (
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                if (currentUser.role === 'ADMIN' || currentUser.role === 'MANAGER') {
-                                                    setIsReturnMode(true);
-                                                } else {
-                                                    setShowPermissionDenied(true);
-                                                }
-                                            }}
-                                            className="p-4 border-2 border-orange-100 bg-orange-50 rounded-xl hover:bg-orange-100 hover:border-orange-300 transition-all text-orange-700 font-bold flex flex-col items-center gap-2"
-                                        >
-                                            <RotateCcw size={24} className="pointer-events-none" /> Devolução de Produtos
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-
-                                                if (currentUser.role === 'ADMIN' || currentUser.role === 'MANAGER') {
-                                                    // Removed confirm dialog to ensure execution if browser blocks it
-                                                    if (onVoidSale) {
-                                                        onVoidSale(manageSale.id);
-                                                        setManageSale(null);
-                                                    } else {
-                                                        console.error("Função de cancelamento indisponível");
-                                                    }
-                                                } else {
-                                                    setShowPermissionDenied(true);
-                                                }
-                                            }}
-                                            className="p-4 border-2 border-red-100 bg-red-50 rounded-xl hover:bg-red-100 hover:border-red-300 transition-all text-red-700 font-bold flex flex-col items-center gap-2"
-                                        >
-                                            <Ban size={24} className="pointer-events-none" /> Cancelar Venda (Estorno)
-                                        </button>
-                                    </div>
-                                )}
+                                    )}
+                                </div>
                             </div>
                         </div>
-                    </div>
-                )}
+                    )
+                }
 
                 {/* View Sale Details Modal (Read Only) */}
-                {viewSale && (
-                    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                        <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl animate-scale-in">
-                            <div className="p-5 border-b flex justify-between items-center bg-gray-50">
-                                <h3 className="font-bold text-gray-800">Detalhes da Venda</h3>
-                                <button onClick={() => setViewSale(null)} className="text-gray-400 hover:text-gray-600"><Ban size={20} /></button>
-                            </div>
-                            <div className="p-6 max-h-[60vh] overflow-y-auto">
-                                <div className="space-y-2 mb-4">
-                                    {viewSale.items.map((item, idx) => (
-                                        <div key={idx} className="flex justify-between text-sm border-b pb-2">
-                                            <div>
-                                                <p className="font-bold text-gray-700">{item.name}</p>
-                                                <p className="text-xs text-gray-500">{item.qty} x R$ {item.appliedPrice.toFixed(2)}</p>
-                                            </div>
-                                            <p className="font-bold text-gray-800">R$ {(item.qty * item.appliedPrice).toFixed(2)}</p>
-                                        </div>
-                                    ))}
+                {
+                    viewSale && (
+                        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                            <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl animate-scale-in">
+                                <div className="p-5 border-b flex justify-between items-center bg-gray-50">
+                                    <h3 className="font-bold text-gray-800">Detalhes da Venda</h3>
+                                    <button onClick={() => setViewSale(null)} className="text-gray-400 hover:text-gray-600"><Ban size={20} /></button>
                                 </div>
-                                <div className="flex justify-between items-center pt-2 border-t font-bold text-lg">
-                                    <span>Total</span>
-                                    <span className="text-emerald-600">R$ {viewSale.total.toFixed(2)}</span>
+                                <div className="p-6 max-h-[60vh] overflow-y-auto">
+                                    <div className="space-y-2 mb-4">
+                                        {viewSale.items.map((item, idx) => (
+                                            <div key={idx} className="flex justify-between text-sm border-b pb-2">
+                                                <div>
+                                                    <p className="font-bold text-gray-700">{item.name}</p>
+                                                    <p className="text-xs text-gray-500">{item.qty} x R$ {item.appliedPrice.toFixed(2)}</p>
+                                                </div>
+                                                <p className="font-bold text-gray-800">R$ {(item.qty * item.appliedPrice).toFixed(2)}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="flex justify-between items-center pt-2 border-t font-bold text-lg">
+                                        <span>Total</span>
+                                        <span className="text-emerald-600">R$ {viewSale.total.toFixed(2)}</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                )}
+                    )
+                }
 
                 {/* Purchase Details Modal */}
-                {viewPurchase && (
-                    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                        <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl animate-scale-in">
-                            <div className="p-5 border-b flex justify-between items-center bg-gray-50">
-                                <h3 className="font-bold text-gray-800">Itens da Compra</h3>
-                                <button onClick={() => setViewPurchase(null)} className="text-gray-400 hover:text-gray-600"><Ban size={20} /></button>
-                            </div>
-                            <div className="p-6 max-h-[60vh] overflow-y-auto">
-                                <div className="mb-4 text-sm text-gray-600 bg-gray-50 p-3 rounded">
-                                    <p><strong>Fornecedor:</strong> {viewPurchase.description}</p>
-                                    <p><strong>Data:</strong> {new Date(viewPurchase.date).toLocaleDateString('pt-BR')}</p>
+                {
+                    viewPurchase && (
+                        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                            <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl animate-scale-in">
+                                <div className="p-5 border-b flex justify-between items-center bg-gray-50">
+                                    <h3 className="font-bold text-gray-800">Itens da Compra</h3>
+                                    <button onClick={() => setViewPurchase(null)} className="text-gray-400 hover:text-gray-600"><Ban size={20} /></button>
                                 </div>
-                                <div className="space-y-2">
-                                    {viewPurchase.items?.map((item, idx) => (
-                                        <div key={idx} className="flex justify-between text-sm border-b pb-2">
-                                            <div>
-                                                <p className="font-bold text-gray-700">{item.name}</p>
-                                                <p className="text-xs text-gray-500">Cód: {item.code}</p>
+                                <div className="p-6 max-h-[60vh] overflow-y-auto">
+                                    <div className="mb-4 text-sm text-gray-600 bg-gray-50 p-3 rounded">
+                                        <p><strong>Fornecedor:</strong> {viewPurchase.description}</p>
+                                        <p><strong>Data:</strong> {new Date(viewPurchase.date).toLocaleDateString('pt-BR')}</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {viewPurchase.items?.map((item, idx) => (
+                                            <div key={idx} className="flex justify-between text-sm border-b pb-2">
+                                                <div>
+                                                    <p className="font-bold text-gray-700">{item.name}</p>
+                                                    <p className="text-xs text-gray-500">Cód: {item.code}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="font-bold text-gray-800">{item.qty} un</p>
+                                                    <p className="text-xs text-gray-500">Custo: R$ {item.costPrice.toFixed(2)}</p>
+                                                </div>
                                             </div>
-                                            <div className="text-right">
-                                                <p className="font-bold text-gray-800">{item.qty} un</p>
-                                                <p className="text-xs text-gray-500">Custo: R$ {item.costPrice.toFixed(2)}</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                                <div className="flex justify-between items-center pt-4 border-t font-bold text-lg mt-4">
-                                    <span>Total Nota</span>
-                                    <span className="text-red-600">R$ {viewPurchase.amount.toFixed(2)}</span>
+                                        ))}
+                                    </div>
+                                    <div className="flex justify-between items-center pt-4 border-t font-bold text-lg mt-4">
+                                        <span>Total Nota</span>
+                                        <span className="text-red-600">R$ {viewPurchase.amount.toFixed(2)}</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                )}
+                    )
+                }
                 {renderProductDetailModal()}
                 <TimeRangeConfigModal
                     isOpen={showTimeRangeConfig}
@@ -2070,7 +2076,7 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
                     ranges={timeRanges}
                     setRanges={setTimeRanges}
                 />
-            </div>
+            </div >
         );
     }
 
@@ -2120,13 +2126,13 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
 
     // --- MAIN MENU RENDERER ---
     return (
-        <div className="p-6">
-            <div className="flex justify-between items-center mb-8">
+        <div className="p-4 md:p-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
                 <div>
                     <h2 className="text-2xl font-bold text-gray-800">Central de Relatórios</h2>
                     <p className="text-gray-500 text-sm">Selecione um relatório para visualizar</p>
                 </div>
-                <div className="flex items-center gap-2 bg-white border p-1 rounded-lg">
+                <div className="flex flex-wrap items-center gap-2 bg-white border p-1 rounded-lg">
                     <Calendar className="text-gray-400 ml-2" size={16} />
                     <input type="date" className="p-1 outline-none text-sm text-gray-600" value={startDate} onChange={e => setStartDate(e.target.value)} />
                     <span className="text-gray-300">|</span>

@@ -122,13 +122,13 @@ const Customers: React.FC<CustomersProps> = ({ customers, onAddCustomer, onUpdat
     );
 
     return (
-        <div className="p-6 space-y-6">
-            <div className="flex justify-between items-center">
+        <div className="p-4 md:p-6 space-y-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h2 className="text-2xl font-bold text-gray-800">Gestão de Clientes (CRM)</h2>
                     <p className="text-gray-500 text-sm">Cadastros, histórico e controle de fiado</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                     <button
                         onClick={() => onNavigate('customer-history')}
                         className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200"
@@ -158,68 +158,70 @@ const Customers: React.FC<CustomersProps> = ({ customers, onAddCustomer, onUpdat
                     </div>
                 </div>
 
-                <table className="w-full text-left">
-                    <thead className="bg-gray-50 text-gray-600 font-semibold text-sm uppercase tracking-wider">
-                        <tr>
-                            <th className="p-4">Cliente</th>
-                            <th className="p-4">Contato</th>
-                            <th className="p-4">Limite Crédito</th>
-                            <th className="p-4">Saldo Devedor</th>
-                            <th className="p-4 text-right">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                        {filteredCustomers.map(c => (
-                            <tr key={c.id} className="hover:bg-gray-50 transition-colors group">
-                                <td className="p-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-lg">
-                                            {c.name.charAt(0).toUpperCase()}
-                                        </div>
-                                        <div>
-                                            <div className="font-medium text-gray-800">{c.name}</div>
-                                            {c.cpf && <div className="text-xs text-gray-400">CPF: {c.cpf}</div>}
-                                        </div>
-                                    </div>
-                                </td>
-                                <td className="p-4 text-sm text-gray-600">
-                                    {c.phone && <div className="flex items-center gap-1"><Phone size={12} /> {c.phone}</div>}
-                                    {c.address && <div className="flex items-center gap-1 mt-1 text-xs text-gray-400"><MapPin size={12} /> {c.address.slice(0, 20)}...</div>}
-                                </td>
-                                <td className="p-4 font-medium text-gray-700">
-                                    R$ {formatCurrency(c.creditLimit)}
-                                </td>
-                                <td className="p-4">
-                                    <div className={`font-bold ${c.debtBalance > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-                                        R$ {formatCurrency(c.debtBalance)}
-                                    </div>
-                                    {c.debtBalance > 0 && (
-                                        <div className="text-xs text-red-400 mt-1">
-                                            {(c.debtBalance / c.creditLimit * 100).toFixed(0)}% do limite
-                                        </div>
-                                    )}
-                                </td>
-                                <td className="p-4 flex justify-end gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
-                                    {c.debtBalance > 0 && (
-                                        <button
-                                            onClick={() => openPayModal(c)}
-                                            className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                                            title="Receber Dívida"
-                                        >
-                                            <DollarSign size={18} />
-                                        </button>
-                                    )}
-                                    <button onClick={() => openEdit(c)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                                        <Edit size={18} />
-                                    </button>
-                                    <button onClick={() => onDeleteCustomer(c.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                                        <Trash2 size={18} />
-                                    </button>
-                                </td>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left min-w-[700px]">
+                        <thead className="bg-gray-50 text-gray-600 font-semibold text-sm uppercase tracking-wider">
+                            <tr>
+                                <th className="p-4">Cliente</th>
+                                <th className="p-4">Contato</th>
+                                <th className="p-4">Limite Crédito</th>
+                                <th className="p-4">Saldo Devedor</th>
+                                <th className="p-4 text-right">Ações</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {filteredCustomers.map(c => (
+                                <tr key={c.id} className="hover:bg-gray-50 transition-colors group">
+                                    <td className="p-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-lg">
+                                                {c.name.charAt(0).toUpperCase()}
+                                            </div>
+                                            <div>
+                                                <div className="font-medium text-gray-800">{c.name}</div>
+                                                {c.cpf && <div className="text-xs text-gray-400">CPF: {c.cpf}</div>}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="p-4 text-sm text-gray-600">
+                                        {c.phone && <div className="flex items-center gap-1"><Phone size={12} /> {c.phone}</div>}
+                                        {c.address && <div className="flex items-center gap-1 mt-1 text-xs text-gray-400"><MapPin size={12} /> {c.address.slice(0, 20)}...</div>}
+                                    </td>
+                                    <td className="p-4 font-medium text-gray-700">
+                                        R$ {formatCurrency(c.creditLimit)}
+                                    </td>
+                                    <td className="p-4">
+                                        <div className={`font-bold ${c.debtBalance > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                                            R$ {formatCurrency(c.debtBalance)}
+                                        </div>
+                                        {c.debtBalance > 0 && (
+                                            <div className="text-xs text-red-400 mt-1">
+                                                {(c.debtBalance / c.creditLimit * 100).toFixed(0)}% do limite
+                                            </div>
+                                        )}
+                                    </td>
+                                    <td className="p-4 flex justify-end gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
+                                        {c.debtBalance > 0 && (
+                                            <button
+                                                onClick={() => openPayModal(c)}
+                                                className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                                                title="Receber Dívida"
+                                            >
+                                                <DollarSign size={18} />
+                                            </button>
+                                        )}
+                                        <button onClick={() => openEdit(c)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                                            <Edit size={18} />
+                                        </button>
+                                        <button onClick={() => onDeleteCustomer(c.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                                            <Trash2 size={18} />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
                 {filteredCustomers.length === 0 && (
                     <div className="p-8 text-center text-gray-500">Nenhum cliente encontrado.</div>
                 )}

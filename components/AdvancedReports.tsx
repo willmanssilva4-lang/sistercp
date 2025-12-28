@@ -188,8 +188,8 @@ const AdvancedReports: React.FC<AdvancedReportsProps> = ({ sales, products }) =>
     // Renderizar menu principal
     if (!currentView) {
         return (
-            <div className="p-6 space-y-6">
-                <div className="flex justify-between items-center">
+            <div className="p-4 md:p-6 space-y-6">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
                         <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
                             <BarChart3 className="text-blue-600" size={32} />
@@ -199,7 +199,7 @@ const AdvancedReports: React.FC<AdvancedReportsProps> = ({ sales, products }) =>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <button
                         onClick={() => setCurrentView('COMPARISON')}
                         className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all text-left"
@@ -266,8 +266,8 @@ const AdvancedReports: React.FC<AdvancedReportsProps> = ({ sales, products }) =>
 
     // Renderizar relatórios específicos
     return (
-        <div className="p-6 space-y-6">
-            <div className="flex justify-between items-center">
+        <div className="p-4 md:p-6 space-y-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <button
                     onClick={() => setCurrentView(null)}
                     className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
@@ -277,7 +277,7 @@ const AdvancedReports: React.FC<AdvancedReportsProps> = ({ sales, products }) =>
                 </button>
                 <button
                     onClick={() => exportToPDF(currentView)}
-                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 w-full md:w-auto justify-center"
                 >
                     <Download size={20} />
                     Exportar PDF
@@ -333,7 +333,7 @@ const AdvancedReports: React.FC<AdvancedReportsProps> = ({ sales, products }) =>
             {/* Comparação de Períodos */}
             {currentView === 'COMPARISON' && (
                 <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
                             <p className="text-sm text-gray-500 font-medium">Período Atual</p>
                             <p className="text-3xl font-bold text-blue-600 mt-2">
@@ -397,7 +397,7 @@ const AdvancedReports: React.FC<AdvancedReportsProps> = ({ sales, products }) =>
             {/* Curva ABC */}
             {currentView === 'ABC' && (
                 <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div className="bg-emerald-50 p-6 rounded-xl border border-emerald-100">
                             <p className="text-sm text-emerald-700 font-medium">Classe A (até 80%)</p>
                             <p className="text-3xl font-bold text-emerald-600 mt-2">
@@ -423,7 +423,7 @@ const AdvancedReports: React.FC<AdvancedReportsProps> = ({ sales, products }) =>
 
                     <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
                         <div className="overflow-x-auto max-h-[500px]">
-                            <table className="w-full text-left text-sm">
+                            <table className="w-full text-left text-sm min-w-[600px]">
                                 <thead className="bg-gray-50 sticky top-0">
                                     <tr>
                                         <th className="p-4">Classe</th>
@@ -439,8 +439,8 @@ const AdvancedReports: React.FC<AdvancedReportsProps> = ({ sales, products }) =>
                                         <tr key={idx} className="hover:bg-gray-50">
                                             <td className="p-4">
                                                 <span className={`px-3 py-1 rounded-full text-xs font-bold ${item.classification === 'A' ? 'bg-emerald-100 text-emerald-700' :
-                                                        item.classification === 'B' ? 'bg-blue-100 text-blue-700' :
-                                                            'bg-gray-100 text-gray-700'
+                                                    item.classification === 'B' ? 'bg-blue-100 text-blue-700' :
+                                                        'bg-gray-100 text-gray-700'
                                                     }`}>
                                                     {item.classification}
                                                 </span>
@@ -480,33 +480,34 @@ const AdvancedReports: React.FC<AdvancedReportsProps> = ({ sales, products }) =>
                     </div>
 
                     <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                        <table className="w-full text-left text-sm">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <th className="p-4">#</th>
-                                    <th className="p-4">Produto</th>
-                                    <th className="p-4 text-right">Quantidade</th>
-                                    <th className="p-4 text-right">Valor Total</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {topProducts.map((item, idx) => (
-                                    <tr key={idx} className="hover:bg-gray-50">
-                                        <td className="p-4 font-bold text-gray-400">#{idx + 1}</td>
-                                        <td className="p-4 font-medium">{item.name}</td>
-                                        <td className="p-4 text-right">{item.qty}</td>
-                                        <td className="p-4 text-right font-bold text-emerald-600">
-                                            R$ {item.value.toFixed(2)}
-                                        </td>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm min-w-[500px]">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="p-4">#</th>
+                                        <th className="p-4">Produto</th>
+                                        <th className="p-4 text-right">Quantidade</th>
+                                        <th className="p-4 text-right">Valor Total</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {topProducts.map((item, idx) => (
+                                        <tr key={idx} className="hover:bg-gray-50">
+                                            <td className="p-4 font-bold text-gray-400">#{idx + 1}</td>
+                                            <td className="p-4 font-medium">{item.name}</td>
+                                            <td className="p-4 text-right">{item.qty}</td>
+                                            <td className="p-4 text-right font-bold text-emerald-600">
+                                                R$ {item.value.toFixed(2)}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                </div>
             )}
-        </div>
-    );
+                </div>
+            );
 };
 
-export default AdvancedReports;
+            export default AdvancedReports;

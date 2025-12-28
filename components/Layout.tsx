@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { LayoutDashboard, ShoppingCart, Package, Users, Settings, LogOut, Store, ArrowLeftCircle, Truck, Gift, BarChart3, Layers, DollarSign, TrendingUp, Database, AlertTriangle, History } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, Package, Users, Settings, LogOut, Store, ArrowLeftCircle, Truck, Gift, BarChart3, Layers, DollarSign, TrendingUp, Database, AlertTriangle, History, Menu, X } from 'lucide-react';
 import { UserRole } from '../types';
 
 interface LayoutProps {
@@ -12,6 +12,8 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children, currentView, onChangeView, onLogout, userName, userRole }) => {
+  const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
+
   // Listen for F1 key to exit POS mode
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -23,6 +25,11 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onChangeView, on
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentView, onChangeView]);
+
+  // Close sidebar when view changes on mobile
+  useEffect(() => {
+    setIsSidebarOpen(false);
+  }, [currentView]);
 
   const allMenuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.CASHIER, UserRole.STOCKIST] },
@@ -60,7 +67,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onChangeView, on
             title="Sair do PDV (F1)"
           >
             <ArrowLeftCircle size={24} className="text-red-400" />
-            <span className="text-sm font-bold">Sair do Caixa (F1)</span>
+            <span className="text-sm font-bold hidden sm:inline">Sair do Caixa (F1)</span>
           </button>
         )}
       </div>
@@ -68,14 +75,34 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onChangeView, on
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen bg-gray-50 overflow-hidden relative">
+      {/* Mobile Overlay */}
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-30 md:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 bg-slate-900 text-white flex flex-col shadow-xl z-20">
-        <div className="p-6 border-b border-slate-700">
-          <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-cyan-400">
-            SisterCP
-          </h1>
-          <p className="text-xs text-slate-400 mt-1">Gestão Inteligente</p>
+      <aside className={`
+        fixed inset-y-0 left-0 z-40 w-64 bg-slate-900 text-white flex flex-col shadow-xl transition-transform duration-300 ease-in-out
+        md:relative md:translate-x-0
+        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
+        <div className="p-6 border-b border-slate-700 flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-cyan-400">
+              SisterCP
+            </h1>
+            <p className="text-xs text-slate-400 mt-1">Gestão Inteligente</p>
+          </div>
+          <button
+            className="md:hidden p-2 text-slate-400 hover:text-white"
+            onClick={() => setIsSidebarOpen(false)}
+          >
+            <X size={24} />
+          </button>
         </div>
 
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
@@ -114,11 +141,19 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onChangeView, on
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
-        <header className="h-16 bg-white border-b flex items-center justify-between px-6 shadow-sm z-10">
-          <h2 className="text-lg font-semibold text-gray-700 capitalize">
-            {menuItems.find(i => i.id === currentView)?.label || 'Acesso Negado'}
-          </h2>
+      <main className="flex-1 flex flex-col h-screen overflow-hidden relative w-full">
+        <header className="h-16 bg-white border-b flex items-center justify-between px-4 md:px-6 shadow-sm z-10">
+          <div className="flex items-center gap-4">
+            <button
+              className="md:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+              onClick={() => setIsSidebarOpen(true)}
+            >
+              <Menu size={24} />
+            </button>
+            <h2 className="text-lg font-semibold text-gray-700 capitalize">
+              {menuItems.find(i => i.id === currentView)?.label || 'Acesso Negado'}
+            </h2>
+          </div>
           <div className="flex gap-4">
             <button
               onClick={() => onChangeView('settings')}
