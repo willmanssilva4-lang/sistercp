@@ -856,8 +856,8 @@ const POS: React.FC<POSProps> = ({ products, promotions = [], kits = [], onProce
 
             {/* Payment Modal (Split Payment Support) */}
             {paymentModalOpen && (
-                <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl p-8 w-full max-w-2xl shadow-2xl relative flex flex-col max-h-[90vh]">
+                <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-50 p-2 md:p-4">
+                    <div className="bg-white rounded-2xl p-4 md:p-8 w-full max-w-2xl shadow-2xl relative flex flex-col max-h-[95vh] overflow-y-auto">
 
                         {/* Header / Tabs */}
                         <div className="flex justify-center mb-6 bg-gray-100 p-1 rounded-xl">
@@ -1011,8 +1011,8 @@ const POS: React.FC<POSProps> = ({ products, promotions = [], kits = [], onProce
 
             {/* Terminal Selection Modal */}
             {selectingCardType && (
-                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-md flex items-center justify-center z-[60] p-4 animate-fade-in transition-all duration-300">
-                    <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl p-8 w-full max-w-lg shadow-2xl animate-scale-in flex flex-col max-h-[85vh] border border-gray-100">
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-md flex items-center justify-center z-[60] p-2 md:p-4 animate-fade-in transition-all duration-300">
+                    <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl p-4 md:p-8 w-full max-w-lg shadow-2xl animate-scale-in flex flex-col max-h-[90vh] border border-gray-100">
                         <div className="text-center mb-6">
                             <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-3 animate-pulse">
                                 <CreditCard size={32} className="text-blue-600" />

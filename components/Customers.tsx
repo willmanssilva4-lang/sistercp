@@ -200,7 +200,7 @@ const Customers: React.FC<CustomersProps> = ({ customers, onAddCustomer, onUpdat
                                             </div>
                                         )}
                                     </td>
-                                    <td className="p-4 flex justify-end gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
+                                    <td className="p-4 flex justify-end gap-2 md:opacity-80 group-hover:opacity-100 transition-opacity">
                                         {c.debtBalance > 0 && (
                                             <button
                                                 onClick={() => openPayModal(c)}
@@ -229,8 +229,8 @@ const Customers: React.FC<CustomersProps> = ({ customers, onAddCustomer, onUpdat
 
             {/* Add/Edit Modal */}
             {isModalOpen && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl p-6 w-full max-w-lg shadow-2xl animate-scale-in">
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 md:p-4">
+                    <div className="bg-white rounded-xl p-4 md:p-6 w-full max-w-lg shadow-2xl animate-scale-in max-h-[95vh] overflow-y-auto">
                         <h3 className="text-xl font-bold mb-4 text-gray-800">{editingId ? 'Editar Cliente' : 'Novo Cliente'}</h3>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>

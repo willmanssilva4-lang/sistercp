@@ -63,11 +63,11 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onChangeView, on
         {currentView === 'pos' && (
           <button
             onClick={() => onChangeView('dashboard')}
-            className="absolute top-4 right-4 z-50 bg-slate-800 text-white p-2 rounded-full shadow-lg opacity-40 hover:opacity-100 transition-all hover:scale-110 flex items-center gap-2 pr-4 pl-2"
+            className="absolute top-4 right-4 z-50 bg-slate-800 text-white p-2 rounded-full shadow-lg opacity-80 hover:opacity-100 transition-all hover:scale-110 flex items-center gap-2 pr-4 pl-2"
             title="Sair do PDV (F1)"
           >
             <ArrowLeftCircle size={24} className="text-red-400" />
-            <span className="text-sm font-bold hidden sm:inline">Sair do Caixa (F1)</span>
+            <span className="text-sm font-bold">Sair</span>
           </button>
         )}
       </div>

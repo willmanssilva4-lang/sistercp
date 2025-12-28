@@ -150,12 +150,12 @@ const Dashboard: React.FC<DashboardProps> = ({ products, sales, transactions }) 
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h2 className="text-2xl font-bold text-gray-800">Painel Gerencial</h2>
         <button
           onClick={handleGetInsight}
           disabled={loadingInsight}
-          className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all disabled:opacity-50"
+          className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all disabled:opacity-50 w-full sm:w-auto justify-center"
         >
           <Sparkles size={18} />
           {loadingInsight ? 'Analisando...' : 'IA Insight'}

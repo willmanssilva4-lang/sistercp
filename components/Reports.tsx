@@ -577,12 +577,12 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
         return (
             <div className="space-y-6 animate-fade-in">
                 {/* Total Sales Summary Card */}
-                <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center border-l-4 border-l-emerald-500">
+                <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-l-4 border-l-emerald-500">
                     <div>
                         <h3 className="text-gray-500 font-bold uppercase text-xs tracking-wider">Total de Vendas no Período</h3>
                         <p className="text-sm text-gray-400 mt-1">{filteredSales.length} vendas realizadas</p>
                     </div>
-                    <p className="text-3xl font-black text-emerald-700">R$ {totalSalesPeriod.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                    <p className="text-2xl sm:text-3xl font-black text-emerald-700">R$ {totalSalesPeriod.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                 </div>
 
                 {/* Chart */}
@@ -1089,8 +1089,8 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
                     </ResponsiveContainer>
                 </div>
 
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    <table className="w-full text-left text-sm">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
+                    <table className="w-full text-left text-sm min-w-[600px]">
                         <thead className="bg-gray-50 text-gray-500 font-bold uppercase">
                             <tr>
                                 <th className="p-4">Class</th>
@@ -1171,8 +1171,8 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
                     <p className="text-3xl font-black text-blue-700">R$ {totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                 </div>
 
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    <table className="w-full text-left text-sm">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
+                    <table className="w-full text-left text-sm min-w-[700px]">
                         <thead className="bg-gray-50 text-gray-500 font-bold uppercase">
                             <tr>
                                 <th className="p-4">Data</th>
@@ -1262,8 +1262,8 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
         const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
 
         return (
-            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl animate-scale-in flex flex-col max-h-[90vh]">
+            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 md:p-4">
+                <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl animate-scale-in flex flex-col max-h-[95vh]">
                     <div className="p-5 border-b flex justify-between items-center bg-gray-50 rounded-t-2xl">
                         <div>
                             <h3 className="font-bold text-gray-800 text-lg">Detalhes da Venda</h3>
@@ -1477,8 +1477,8 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
                 </div>
 
                 {/* Detailed Table */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    <table className="w-full text-left text-sm">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
+                    <table className="w-full text-left text-sm min-w-[800px]">
                         <thead className="bg-gray-50 text-gray-500 font-bold uppercase">
                             <tr>
                                 <th className="p-4">Faixa Horária</th>
@@ -1584,8 +1584,8 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
                     </ResponsiveContainer>
                 </div>
 
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    <table className="w-full text-left text-sm">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
+                    <table className="w-full text-left text-sm min-w-[500px]">
                         <thead className="bg-gray-50 text-gray-500 font-bold uppercase">
                             <tr>
                                 <th className="p-4">Grupo</th>
@@ -1652,8 +1652,8 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
                     </div>
                 </div>
 
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    <table className="w-full text-left text-sm">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
+                    <table className="w-full text-left text-sm min-w-[500px]">
                         <thead className="bg-gray-50 text-gray-500 font-bold uppercase">
                             <tr>
                                 <th className="p-4">Data</th>
@@ -1697,8 +1697,8 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
                     <KPICard title="Pendente / A Pagar" value={`R$ ${pendingPurchases.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} icon={Clock} color="orange" />
                 </div>
 
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    <table className="w-full text-left text-sm">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
+                    <table className="w-full text-left text-sm min-w-[700px]">
                         <thead className="bg-gray-50 text-gray-500 font-bold uppercase">
                             <tr>
                                 <th className="p-4">Data</th>
@@ -2132,99 +2132,128 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
                     <h2 className="text-2xl font-bold text-gray-800">Central de Relatórios</h2>
                     <p className="text-gray-500 text-sm">Selecione um relatório para visualizar</p>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 bg-white border p-1 rounded-lg">
-                    <Calendar className="text-gray-400 ml-2" size={16} />
-                    <input type="date" className="p-1 outline-none text-sm text-gray-600" value={startDate} onChange={e => setStartDate(e.target.value)} />
-                    <span className="text-gray-300">|</span>
-                    <input type="date" className="p-1 outline-none text-sm text-gray-600" value={endDate} onChange={e => setEndDate(e.target.value)} />
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
+                    {currentView && (
+                        <button
+                            onClick={() => setCurrentView(null)}
+                            className="flex items-center gap-2 text-gray-600 hover:text-gray-800 font-bold text-sm bg-gray-100 px-3 py-2 rounded-lg transition-colors w-full sm:w-auto justify-center mb-2 sm:mb-0"
+                        >
+                            <ArrowLeft size={16} /> Voltar ao Menu
+                        </button>
+                    )}
+                    <div className="flex items-center gap-2 bg-white border p-1 rounded-lg w-full sm:w-auto">
+                        <Calendar className="text-gray-400 ml-2 shrink-0" size={16} />
+                        <div className="flex items-center gap-1 flex-1">
+                            <input type="date" className="p-1 outline-none text-sm text-gray-600 w-full" value={startDate} onChange={e => setStartDate(e.target.value)} />
+                            <span className="text-gray-300">|</span>
+                            <input type="date" className="p-1 outline-none text-sm text-gray-600 w-full" value={endDate} onChange={e => setEndDate(e.target.value)} />
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div className="flex flex-col gap-4 max-w-4xl mx-auto">
-                <ReportMenuCard
-                    title="Vendas no período"
-                    description="Somatório das vendas em um período, podendo ser agrupadas por dia, mês ou ano."
-                    icon={TrendingUp}
-                    onClick={() => setCurrentView('SALES_PERIOD')}
-                />
-                <ReportMenuCard
-                    title="Detalhes de vendas e custos no período"
-                    description="Somatório das vendas, detalhando custos, comissões, lucros e taxas em um período, podendo ser agrupadas por dia, mês ou ano."
-                    icon={Calculator}
-                    onClick={() => setCurrentView('SALES_COSTS')}
-                />
-                <ReportMenuCard
-                    title="Gráfico por forma de pagamento no período"
-                    description="Percentual de formas de pagamentos nas vendas de um período."
-                    icon={Receipt}
-                    onClick={() => setCurrentView('PAYMENT_METHODS')}
-                />
-                <ReportMenuCard
-                    title="Gráfico de vendas por grupos de produtos no período"
-                    description="Percentual de grupos de produtos nas vendas de um período."
-                    icon={Package}
-                    onClick={() => setCurrentView('PRODUCT_GROUPS')}
-                />
-                <ReportMenuCard
-                    title="Vendas por Produtos"
-                    description="Listagem detalhada de produtos vendidos no período."
-                    icon={Package}
-                    onClick={() => setCurrentView('SALES_BY_PRODUCT')}
-                />
-                <ReportMenuCard
-                    title="Relatório de Faixa Horária"
-                    description="Análise de vendas por horário do dia."
-                    icon={Clock}
-                    onClick={() => setCurrentView('HOURLY_SALES')}
-                />
-                <ReportMenuCard
-                    title="Gráfico de vendas por fornecedores de produtos no período"
-                    description="Percentual de fornecedores de produtos nas vendas de um período."
-                    icon={Truck}
-                    onClick={() => setCurrentView('SUPPLIERS')}
-                />
-                <ReportMenuCard
-                    title="Gráfico de vendas por marcas de produtos no período"
-                    description="Percentual de marcas de produtos nas vendas de um período."
-                    icon={Tag}
-                    onClick={() => setCurrentView('BRANDS')}
-                />
-                <ReportMenuCard
-                    title="Curva ABC - Produtos Mais Vendidos"
-                    description="Percentual de cada produto mais vendidos de um período"
-                    icon={TrendingDown}
-                    onClick={() => setCurrentView('ABC_PRODUCTS')}
-                />
-                <ReportMenuCard
-                    title="Relatórios Avançados"
-                    description="Análises detalhadas, comparativos e tendências."
-                    icon={TrendingUp}
-                    onClick={onNavigateToAdvancedReports}
-                />
+            {currentView ? (
+                <div className="animate-fade-in">
+                    {currentView === 'SALES_PERIOD' && renderSalesPeriod()}
+                    {currentView === 'SALES_COSTS' && renderSalesCosts()}
+                    {currentView === 'PAYMENT_METHODS' && renderPaymentMethods()}
+                    {currentView === 'PRODUCT_GROUPS' && renderGenericGroupReport('category')}
+                    {currentView === 'BRANDS' && renderGenericGroupReport('brand')}
+                    {currentView === 'SUPPLIERS' && renderGenericGroupReport('supplier')}
+                    {currentView === 'ABC_PRODUCTS' && renderABC()}
+                    {currentView === 'SALES_BY_PRODUCT' && renderSalesByProduct()}
+                    {currentView === 'HOURLY_SALES' && renderHourlySales()}
+                    {currentView === 'PURCHASES' && renderPurchasesReport()}
+                    {currentView === 'RETURNS' && renderCancelledOrReturns('RETURNS')}
+                    {currentView === 'CANCELLED' && renderCancelledOrReturns('CANCELLED')}
+                </div>
+            ) : (
+                <div className="flex flex-col gap-4 max-w-4xl mx-auto">
+                    <ReportMenuCard
+                        title="Vendas no período"
+                        description="Somatório das vendas em um período, podendo ser agrupadas por dia, mês ou ano."
+                        icon={TrendingUp}
+                        onClick={() => setCurrentView('SALES_PERIOD')}
+                    />
+                    <ReportMenuCard
+                        title="Detalhes de vendas e custos no período"
+                        description="Somatório das vendas, detalhando custos, comissões, lucros e taxas em um período, podendo ser agrupadas por dia, mês ou ano."
+                        icon={Calculator}
+                        onClick={() => setCurrentView('SALES_COSTS')}
+                    />
+                    <ReportMenuCard
+                        title="Gráfico por forma de pagamento no período"
+                        description="Percentual de formas de pagamentos nas vendas de um período."
+                        icon={Receipt}
+                        onClick={() => setCurrentView('PAYMENT_METHODS')}
+                    />
+                    <ReportMenuCard
+                        title="Gráfico de vendas por grupos de produtos no período"
+                        description="Percentual de grupos de produtos nas vendas de um período."
+                        icon={Package}
+                        onClick={() => setCurrentView('PRODUCT_GROUPS')}
+                    />
+                    <ReportMenuCard
+                        title="Vendas por Produtos"
+                        description="Listagem detalhada de produtos vendidos no período."
+                        icon={Package}
+                        onClick={() => setCurrentView('SALES_BY_PRODUCT')}
+                    />
+                    <ReportMenuCard
+                        title="Relatório de Faixa Horária"
+                        description="Análise de vendas por horário do dia."
+                        icon={Clock}
+                        onClick={() => setCurrentView('HOURLY_SALES')}
+                    />
+                    <ReportMenuCard
+                        title="Gráfico de vendas por fornecedores de produtos no período"
+                        description="Percentual de fornecedores de produtos nas vendas de um período."
+                        icon={Truck}
+                        onClick={() => setCurrentView('SUPPLIERS')}
+                    />
+                    <ReportMenuCard
+                        title="Gráfico de vendas por marcas de produtos no período"
+                        description="Percentual de marcas de produtos nas vendas de um período."
+                        icon={Tag}
+                        onClick={() => setCurrentView('BRANDS')}
+                    />
+                    <ReportMenuCard
+                        title="Curva ABC - Produtos Mais Vendidos"
+                        description="Percentual de cada produto mais vendidos de um período"
+                        icon={TrendingDown}
+                        onClick={() => setCurrentView('ABC_PRODUCTS')}
+                    />
+                    <ReportMenuCard
+                        title="Relatórios Avançados"
+                        description="Análises detalhadas, comparativos e tendências."
+                        icon={TrendingUp}
+                        onClick={onNavigateToAdvancedReports}
+                    />
 
-                {/* Separator for other reports not in image but existing in system */}
-                <div className="my-4 border-t border-gray-100"></div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest px-2">Outros Relatórios</p>
+                    {/* Separator for other reports not in image but existing in system */}
+                    <div className="my-4 border-t border-gray-100"></div>
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest px-2">Outros Relatórios</p>
 
-                <ReportMenuCard
-                    title="Compras no período"
-                    description="Análise de entrada de mercadorias e contas a pagar."
-                    icon={Truck}
-                    onClick={() => setCurrentView('PURCHASES')}
-                />
-                <ReportMenuCard
-                    title="Vendas com Devoluções"
-                    description="Detalhamento das vendas que possuem alguma devolução e que foi gerado vale compra."
-                    icon={RotateCcw}
-                    onClick={() => setCurrentView('RETURNS')}
-                />
-                <ReportMenuCard
-                    title="Vendas Canceladas"
-                    description="Detalhamento das vendas canceladas que foram estornado o valor pago."
-                    icon={XCircle}
-                    onClick={() => setCurrentView('CANCELLED')}
-                />
-            </div>
+                    <ReportMenuCard
+                        title="Compras no período"
+                        description="Análise de entrada de mercadorias e contas a pagar."
+                        icon={Truck}
+                        onClick={() => setCurrentView('PURCHASES')}
+                    />
+                    <ReportMenuCard
+                        title="Vendas com Devoluções"
+                        description="Detalhamento das vendas que possuem alguma devolução e que foi gerado vale compra."
+                        icon={RotateCcw}
+                        onClick={() => setCurrentView('RETURNS')}
+                    />
+                    <ReportMenuCard
+                        title="Vendas Canceladas"
+                        description="Detalhamento das vendas canceladas que foram estornado o valor pago."
+                        icon={XCircle}
+                        onClick={() => setCurrentView('CANCELLED')}
+                    />
+                </div>
+            )}
             {renderReturnValidationModal()}
             {renderPermissionDeniedModal()}
             {renderProductDetailModal()}

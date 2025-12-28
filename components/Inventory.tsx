@@ -685,7 +685,7 @@ const Inventory: React.FC<InventoryProps> = ({ products, stockMovements, onAddPr
                                             {p.stock} {p.unit}
                                         </div>
                                     </td>
-                                    <td className="p-4 flex justify-center gap-2">
+                                    <td className="p-4 flex justify-center gap-2 md:opacity-80 group-hover:opacity-100 transition-opacity">
                                         <button
                                             type="button"
                                             onClick={() => openAdjustment(p)}
@@ -723,8 +723,8 @@ const Inventory: React.FC<InventoryProps> = ({ products, stockMovements, onAddPr
 
             {/* --- STOCK MOVEMENT HISTORY MODAL --- */}
             {isHistoryModalOpen && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 md:p-4">
+                    <div className="bg-white rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
                         <div className="p-5 bg-slate-800 text-white flex justify-between items-center">
                             <h3 className="font-bold text-xl flex items-center gap-2"><History size={20} /> Histórico de Movimentações</h3>
                             <button onClick={() => setIsHistoryModalOpen(false)} className="text-slate-400 hover:text-white"><X size={24} /></button>
@@ -765,8 +765,8 @@ const Inventory: React.FC<InventoryProps> = ({ products, stockMovements, onAddPr
 
             {/* --- COMPREHENSIVE INVENTORY MODAL --- */}
             {isAdjustmentModalOpen && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl w-full max-w-4xl shadow-2xl animate-scale-in flex flex-col max-h-[90vh]">
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 md:p-4">
+                    <div className="bg-white rounded-xl w-full max-w-4xl shadow-2xl animate-scale-in flex flex-col max-h-[95vh]">
                         <div className="p-5 border-b flex justify-between items-center bg-gray-50 rounded-t-xl">
                             <div>
                                 <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">

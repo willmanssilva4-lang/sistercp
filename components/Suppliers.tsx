@@ -119,7 +119,7 @@ const Suppliers: React.FC<SuppliersProps> = ({
     return (
         <div className="p-6 space-y-6">
             {/* Header */}
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
                         <Truck className="text-blue-600" size={32} />
@@ -129,7 +129,7 @@ const Suppliers: React.FC<SuppliersProps> = ({
                 </div>
                 <button
                     onClick={() => handleOpenModal()}
-                    className="bg-blue-600 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all"
+                    className="bg-blue-600 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all w-full sm:w-auto justify-center"
                 >
                     <Plus size={20} />
                     Novo Fornecedor
@@ -187,8 +187,8 @@ const Suppliers: React.FC<SuppliersProps> = ({
                         <button
                             onClick={() => setFilterActive('all')}
                             className={`px-4 py-2 rounded-lg font-medium transition-colors ${filterActive === 'all'
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                 }`}
                         >
                             Todos ({suppliers.length})
@@ -196,8 +196,8 @@ const Suppliers: React.FC<SuppliersProps> = ({
                         <button
                             onClick={() => setFilterActive('active')}
                             className={`px-4 py-2 rounded-lg font-medium transition-colors ${filterActive === 'active'
-                                    ? 'bg-green-600 text-white'
-                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                ? 'bg-green-600 text-white'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                 }`}
                         >
                             Ativos ({activeCount})
@@ -205,8 +205,8 @@ const Suppliers: React.FC<SuppliersProps> = ({
                         <button
                             onClick={() => setFilterActive('inactive')}
                             className={`px-4 py-2 rounded-lg font-medium transition-colors ${filterActive === 'inactive'
-                                    ? 'bg-gray-600 text-white'
-                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                ? 'bg-gray-600 text-white'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                 }`}
                         >
                             Inativos ({inactiveCount})
@@ -238,8 +238,8 @@ const Suppliers: React.FC<SuppliersProps> = ({
                                         <h3 className="text-lg font-bold text-gray-800">{supplier.name}</h3>
                                         <span
                                             className={`px-2 py-1 rounded-full text-xs font-medium ${supplier.active
-                                                    ? 'bg-green-100 text-green-700'
-                                                    : 'bg-gray-100 text-gray-700'
+                                                ? 'bg-green-100 text-green-700'
+                                                : 'bg-gray-100 text-gray-700'
                                                 }`}
                                         >
                                             {supplier.active ? 'Ativo' : 'Inativo'}
@@ -254,8 +254,8 @@ const Suppliers: React.FC<SuppliersProps> = ({
                                     <button
                                         onClick={() => handleToggleActive(supplier)}
                                         className={`p-2 rounded-lg transition-colors ${supplier.active
-                                                ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                                : 'bg-green-100 text-green-600 hover:bg-green-200'
+                                            ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                            : 'bg-green-100 text-green-600 hover:bg-green-200'
                                             }`}
                                         title={supplier.active ? 'Desativar' : 'Ativar'}
                                     >
@@ -323,8 +323,8 @@ const Suppliers: React.FC<SuppliersProps> = ({
 
             {/* Modal */}
             {showModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 md:p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[95vh] overflow-y-auto">
                         <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6 rounded-t-2xl">
                             <h3 className="text-2xl font-bold flex items-center gap-2">
                                 <Truck size={28} />

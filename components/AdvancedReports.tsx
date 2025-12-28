@@ -267,17 +267,17 @@ const AdvancedReports: React.FC<AdvancedReportsProps> = ({ sales, products }) =>
     // Renderizar relatórios específicos
     return (
         <div className="p-4 md:p-6 space-y-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <button
                     onClick={() => setCurrentView(null)}
-                    className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
+                    className="flex items-center gap-2 text-gray-600 hover:text-gray-800 font-bold bg-gray-100 px-3 py-2 rounded-lg transition-colors w-full sm:w-auto justify-center"
                 >
                     <ArrowLeft size={20} />
                     Voltar
                 </button>
                 <button
-                    onClick={() => exportToPDF(currentView)}
-                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 w-full md:w-auto justify-center"
+                    onClick={() => exportToPDF(currentView!)}
+                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 w-full sm:w-auto justify-center"
                 >
                     <Download size={20} />
                     Exportar PDF
@@ -286,46 +286,46 @@ const AdvancedReports: React.FC<AdvancedReportsProps> = ({ sales, products }) =>
 
             {/* Filtros de Data */}
             <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
-                <div className="flex flex-wrap gap-4 items-end">
-                    <div>
+                <div className="flex flex-col sm:flex-row flex-wrap gap-4 items-start sm:items-end">
+                    <div className="w-full sm:w-auto">
                         <label className="block text-sm font-medium text-gray-700 mb-1">Data Inicial</label>
                         <input
                             type="date"
                             value={startDate}
                             onChange={(e) => setStartDate(e.target.value)}
-                            className="border border-gray-300 rounded-lg px-3 py-2"
+                            className="border border-gray-300 rounded-lg px-3 py-2 w-full"
                         />
                     </div>
-                    <div>
+                    <div className="w-full sm:w-auto">
                         <label className="block text-sm font-medium text-gray-700 mb-1">Data Final</label>
                         <input
                             type="date"
                             value={endDate}
                             onChange={(e) => setEndDate(e.target.value)}
-                            className="border border-gray-300 rounded-lg px-3 py-2"
+                            className="border border-gray-300 rounded-lg px-3 py-2 w-full"
                         />
                     </div>
                     {currentView === 'COMPARISON' && (
-                        <>
-                            <div className="border-l pl-4">
+                        <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto border-t sm:border-t-0 sm:border-l pt-4 sm:pt-0 sm:pl-4">
+                            <div className="w-full sm:w-auto">
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Comparar: Início</label>
                                 <input
                                     type="date"
                                     value={compareStartDate}
                                     onChange={(e) => setCompareStartDate(e.target.value)}
-                                    className="border border-gray-300 rounded-lg px-3 py-2"
+                                    className="border border-gray-300 rounded-lg px-3 py-2 w-full"
                                 />
                             </div>
-                            <div>
+                            <div className="w-full sm:w-auto">
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Comparar: Fim</label>
                                 <input
                                     type="date"
                                     value={compareEndDate}
                                     onChange={(e) => setCompareEndDate(e.target.value)}
-                                    className="border border-gray-300 rounded-lg px-3 py-2"
+                                    className="border border-gray-300 rounded-lg px-3 py-2 w-full"
                                 />
                             </div>
-                        </>
+                        </div>
                     )}
                 </div>
             </div>
@@ -505,9 +505,10 @@ const AdvancedReports: React.FC<AdvancedReportsProps> = ({ sales, products }) =>
                             </table>
                         </div>
                     </div>
-            )}
                 </div>
-            );
+            )}
+        </div>
+    );
 };
 
-            export default AdvancedReports;
+export default AdvancedReports;

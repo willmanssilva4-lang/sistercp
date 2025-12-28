@@ -503,7 +503,7 @@ const Finance: React.FC<FinanceProps> = ({ transactions, onAddTransaction, onUpd
                                                     const overdue = isOverdue(t);
                                                     return (
                                                         <div key={t.id} className="p-4 hover:bg-gray-50 transition-colors">
-                                                            <div className="flex justify-between items-start gap-4">
+                                                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                                                                 {/* Left Section - Main Info */}
                                                                 <div className="flex-1 space-y-1">
                                                                     <h5 className="font-medium text-gray-800">{t.description}</h5>
