@@ -17,12 +17,14 @@ interface CashRegisterSession {
 
 interface CashRegisterProps {
     currentUser: { id: string; name: string } | null;
+    onSessionOpen?: () => void;
+    autoOpenOpenModal?: boolean;
 }
 
-export default function CashRegister({ currentUser }: CashRegisterProps) {
+export default function CashRegister({ currentUser, onSessionOpen, autoOpenOpenModal }: CashRegisterProps) {
     const [sessions, setSessions] = useState<CashRegisterSession[]>([]);
     const [currentSession, setCurrentSession] = useState<CashRegisterSession | null>(null);
-    const [showOpenModal, setShowOpenModal] = useState(false);
+    const [showOpenModal, setShowOpenModal] = useState(autoOpenOpenModal || false);
     const [showCloseModal, setShowCloseModal] = useState(false);
     const [openingBalance, setOpeningBalance] = useState('0');
     const [closingBalance, setClosingBalance] = useState('0');
@@ -64,6 +66,7 @@ export default function CashRegister({ currentUser }: CashRegisterProps) {
         setCurrentSession(newSession);
         setShowOpenModal(false);
         setOpeningBalance('0');
+        if (onSessionOpen) onSessionOpen();
     };
 
     const handleCloseRegister = () => {

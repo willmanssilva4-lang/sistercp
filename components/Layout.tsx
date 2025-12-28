@@ -27,7 +27,6 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onChangeView, on
   const allMenuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.CASHIER, UserRole.STOCKIST] },
     { id: 'pos', label: 'PDV / Caixa', icon: ShoppingCart, roles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.CASHIER] },
-    { id: 'cash-register', label: 'Controle de Caixa', icon: DollarSign, roles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.CASHIER] },
     { id: 'inventory', label: 'Produtos / Estoque', icon: Package, roles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.STOCKIST] },
     { id: 'expiry-alerts', label: 'Alertas de Vencimento', icon: AlertTriangle, roles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.STOCKIST] },
     { id: 'purchases', label: 'Compras / Entrada', icon: Truck, roles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.STOCKIST] },
@@ -74,7 +73,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onChangeView, on
       <aside className="w-64 bg-slate-900 text-white flex flex-col shadow-xl z-20">
         <div className="p-6 border-b border-slate-700">
           <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-cyan-400">
-            MarketMaster
+            SisterCP
           </h1>
           <p className="text-xs text-slate-400 mt-1">Gestão Inteligente</p>
         </div>

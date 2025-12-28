@@ -25,7 +25,7 @@ import Suppliers from './components/Suppliers';
 import PurchaseSuggestion from './components/PurchaseSuggestion';
 import AdvancedReports from './components/AdvancedReports';
 import { Product, Sale, User, UserRole, Transaction, Promotion, ProductKit, StockMovement, Customer, Supplier } from './types';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, X } from 'lucide-react';
 import { useProducts } from './contexts/ProductsContext';
 import { useSales } from './contexts/SalesContext';
 import { useFinance } from './contexts/FinanceContext';
@@ -63,6 +63,8 @@ const App: React.FC = () => {
   // -- UI STATE --
   const [errorModal, setErrorModal] = useState({ open: false, message: '' });
   const [successModal, setSuccessModal] = useState({ open: false, message: '' });
+  const [isCashRegisterModalOpen, setIsCashRegisterModalOpen] = useState(false);
+  const [cashRegisterAutoOpen, setCashRegisterAutoOpen] = useState(false);
 
   // -- LOAD DATA ON MOUNT --
   // -- LOAD DATA --
@@ -201,7 +203,7 @@ const App: React.FC = () => {
     const allowedViews = {
       [UserRole.ADMIN]: ['dashboard', 'pos', 'inventory', 'purchases', 'purchase-suggestion', 'peps', 'promotions', 'finance', 'reports', 'advanced-reports', 'users', 'customers', 'suppliers', 'settings', 'cash-register', 'profit-margin', 'backup', 'expiry-alerts', 'customer-history'],
       [UserRole.MANAGER]: ['dashboard', 'pos', 'inventory', 'purchases', 'purchase-suggestion', 'peps', 'promotions', 'finance', 'reports', 'advanced-reports', 'users', 'customers', 'suppliers', 'settings', 'cash-register', 'profit-margin', 'expiry-alerts', 'customer-history'],
-      [UserRole.CASHIER]: ['dashboard', 'pos', 'customers', 'cash-register'],
+      [UserRole.CASHIER]: ['dashboard', 'pos', 'customers', 'cash-register', 'finance'],
       [UserRole.STOCKIST]: ['dashboard', 'inventory', 'purchases', 'purchase-suggestion', 'peps', 'suppliers', 'expiry-alerts'],
     };
 
@@ -236,10 +238,13 @@ const App: React.FC = () => {
               <h3 className="text-xl font-bold text-gray-800 mb-2">Caixa Fechado</h3>
               <p className="mb-6">É necessário abrir o caixa antes de realizar vendas.</p>
               <button
-                onClick={() => setCurrentView('cash-register')}
+                onClick={() => {
+                  setCashRegisterAutoOpen(true);
+                  setIsCashRegisterModalOpen(true);
+                }}
                 className="bg-emerald-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-200"
               >
-                Ir para Controle de Caixa
+                Abrir Controle de Caixa
               </button>
             </div>
           );
@@ -267,7 +272,13 @@ const App: React.FC = () => {
           onNavigate={setCurrentView}
         />;
       case 'finance':
-        return <Finance transactions={transactions} onAddTransaction={addTransaction} onUpdateStatus={updateTransactionStatus} onDeleteTransaction={handleDeleteTransaction} onNavigate={setCurrentView} />;
+        const currentUserForFinance = {
+          id: user.id,
+          name: user.email?.split('@')[0] || 'User',
+          email: user.email || '',
+          role: currentUserRole
+        };
+        return <Finance transactions={transactions} onAddTransaction={addTransaction} onUpdateStatus={updateTransactionStatus} onDeleteTransaction={handleDeleteTransaction} onNavigate={setCurrentView} currentUser={currentUserForFinance} />;
       case 'reports':
         // Create a proper User object with role for Reports
         const dbUser = allUsers.find(u => u.id === user.id);
@@ -419,6 +430,41 @@ const App: React.FC = () => {
                   >
                     Ótimo, continuar
                   </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* GLOBAL CASH REGISTER MODAL */}
+          {isCashRegisterModalOpen && (
+            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[150] p-4 animate-fade-in">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl overflow-hidden animate-scale-in flex flex-col max-h-[90vh]">
+                <div className="p-4 border-b flex justify-between items-center bg-gray-50">
+                  <h3 className="text-xl font-bold text-gray-800">Controle de Caixa</h3>
+                  <button
+                    onClick={() => {
+                      setIsCashRegisterModalOpen(false);
+                      setCashRegisterAutoOpen(false);
+                    }}
+                    className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+                  >
+                    <X className="text-gray-500" />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-y-auto">
+                  <CashRegister
+                    currentUser={{
+                      id: user.id,
+                      name: user.email?.split('@')[0] || 'User',
+                      email: user.email || '',
+                      role: currentUserRole
+                    }}
+                    onSessionOpen={() => {
+                      setIsCashRegisterModalOpen(false);
+                      setCashRegisterAutoOpen(false);
+                    }}
+                    autoOpenOpenModal={cashRegisterAutoOpen}
+                  />
                 </div>
               </div>
             </div>

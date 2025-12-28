@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Transaction } from '../types';
+import { Transaction, User } from '../types';
+import CashRegister from './CashRegister';
 import {
     ArrowUpCircle,
     ArrowDownCircle,
@@ -34,6 +35,7 @@ interface FinanceProps {
     onUpdateStatus: (id: string, status: 'PAID' | 'PENDING') => void;
     onDeleteTransaction: (id: string) => void;
     onNavigate?: (view: string) => void;
+    currentUser: User | null;
 }
 
 const DEFAULT_INCOME_CATEGORIES = [
@@ -56,8 +58,9 @@ const DEFAULT_EXPENSE_CATEGORIES = [
     "Outras Despesas"
 ];
 
-const Finance: React.FC<FinanceProps> = ({ transactions, onAddTransaction, onUpdateStatus, onDeleteTransaction, onNavigate }) => {
+const Finance: React.FC<FinanceProps> = ({ transactions, onAddTransaction, onUpdateStatus, onDeleteTransaction, onNavigate, currentUser }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isCashRegisterModalOpen, setIsCashRegisterModalOpen] = useState(false);
     const [filterType, setFilterType] = useState<'ALL' | 'INCOME' | 'EXPENSE'>('ALL');
     const [filterStatus, setFilterStatus] = useState<'ALL' | 'PAID' | 'PENDING'>('ALL');
 
@@ -270,7 +273,7 @@ const Finance: React.FC<FinanceProps> = ({ transactions, onAddTransaction, onUpd
                         <TrendingUp size={20} /> Margem de Lucro
                     </button>
                     <button
-                        onClick={() => onNavigate && onNavigate('cash-register')}
+                        onClick={() => setIsCashRegisterModalOpen(true)}
                         className="bg-indigo-600 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all"
                     >
                         <Wallet size={20} /> Controle de Caixa
@@ -732,6 +735,28 @@ const Finance: React.FC<FinanceProps> = ({ transactions, onAddTransaction, onUpd
                                 <button type="submit" className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium">Salvar Lançamento</button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+            {/* Modal Cash Register */}
+            {isCashRegisterModalOpen && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl w-full max-w-6xl shadow-2xl animate-scale-in flex flex-col max-h-[90vh] overflow-hidden">
+                        <div className="p-4 border-b flex justify-between items-center bg-gray-50">
+                            <h3 className="text-xl font-bold text-gray-800">Controle de Caixa</h3>
+                            <button
+                                onClick={() => setIsCashRegisterModalOpen(false)}
+                                className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+                            >
+                                <X className="text-gray-500" />
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto">
+                            <CashRegister
+                                currentUser={currentUser}
+                                onSessionOpen={() => setIsCashRegisterModalOpen(false)}
+                            />
+                        </div>
                     </div>
                 </div>
             )}
