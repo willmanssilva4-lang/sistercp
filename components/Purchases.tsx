@@ -7,7 +7,7 @@ import PurchaseSuggestion from './PurchaseSuggestion';
 interface PurchasesProps {
     products: Product[];
     currentUser: User;
-    onProcessPurchase: (purchase: any) => void;
+    onProcessPurchase: (purchase: any) => Promise<void>;
     transactions: Transaction[];
     onCancelPurchase: (transactionId: string) => void;
     onBack?: () => void;
@@ -195,7 +195,7 @@ const Purchases: React.FC<PurchasesProps> = ({ products, currentUser, onProcessP
         });
     };
 
-    const handleFinalize = (e: React.FormEvent) => {
+    const handleFinalize = async (e: React.FormEvent) => {
         e.preventDefault();
         if (cart.length === 0) {
             alert("Adicione produtos à compra.");
@@ -223,19 +223,24 @@ const Purchases: React.FC<PurchasesProps> = ({ products, currentUser, onProcessP
             entryType // Pass the entry type
         };
 
-        onProcessPurchase(purchaseData);
+        try {
+            await onProcessPurchase(purchaseData);
 
-        // Reset Form
-        setCart([]);
-        setSupplier('');
-        setInvoiceNumber('');
-        setPaymentStatus('PENDING');
-        setInstallments(1);
-        setInstallmentInterval(30);
-        setEntryType('PURCHASE');
+            // Reset Form
+            setCart([]);
+            setSupplier('');
+            setInvoiceNumber('');
+            setPaymentStatus('PENDING');
+            setInstallments(1);
+            setInstallmentInterval(30);
+            setEntryType('PURCHASE');
 
-        // Show success modal
-        setShowSuccessModal(true);
+            // Show success modal
+            setShowSuccessModal(true);
+        } catch (error) {
+            console.error("Erro ao finalizar compra:", error);
+            alert("Erro ao finalizar compra: " + (error as any).message);
+        }
     };
 
     const calculateSuggestedPriceForProduct = (cost: number, category: string) => {

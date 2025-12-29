@@ -21,7 +21,6 @@ interface ProductsContextType {
   addPromotion: (p: Promotion) => Promise<void>;
   updatePromotion: (p: Promotion) => Promise<void>;
   deletePromotion: (id: string) => Promise<void>;
-  deletePromotion: (id: string) => Promise<void>;
   processPurchase: (purchase: any) => Promise<void>;
   cancelPurchase: (transactionId: string) => Promise<void>;
   refreshProducts: () => Promise<void>;
@@ -474,7 +473,7 @@ export const ProductsProvider: React.FC<{ children: ReactNode }> = ({ children }
       }
     }
 
-    await refreshProducts();
+    await fetchData();
   };
 
   const cancelPurchase = async (transactionId: string) => {
@@ -503,7 +502,7 @@ export const ProductsProvider: React.FC<{ children: ReactNode }> = ({ children }
     );
     for (const r of related) await deleteTransaction(r.id);
 
-    await refreshProducts();
+    await fetchData();
   };
 
   return (
@@ -512,6 +511,7 @@ export const ProductsProvider: React.FC<{ children: ReactNode }> = ({ children }
       addProduct, updateProduct, deleteProduct, adjustStock,
       addKit, updateKit, deleteKit,
       addPromotion, updatePromotion, deletePromotion,
+      processPurchase, cancelPurchase,
       refreshProducts: fetchData
     }}>
       {children}

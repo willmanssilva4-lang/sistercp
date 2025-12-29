@@ -296,6 +296,7 @@ const App: React.FC = () => {
           onVoidSale={voidSale}
           onReturnItems={returnItems}
           onNavigateToAdvancedReports={() => setCurrentView('advanced-reports')}
+          onNavigateToCustomerHistory={() => setCurrentView('customer-history')}
         />;
       case 'advanced-reports':
         return <AdvancedReports sales={sales} products={products} />;

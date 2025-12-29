@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Product, StockMovement } from '../types';
 import { Plus, Edit, Trash2, Search, Package, Tags, X, Check, Pencil, CreditCard, History, ArrowDown, ArrowUp, ArrowRight, ArrowLeftRight, Scan, Save, Calculator, Upload, FileSpreadsheet, AlertCircle, Layers, AlertTriangle } from 'lucide-react';
+import ExpiryAlerts from './ExpiryAlerts';
 
 interface InventoryProps {
     products: Product[];
@@ -100,6 +101,7 @@ const Inventory: React.FC<InventoryProps> = ({ products, stockMovements, onAddPr
 
     const [isAuxModalOpen, setIsAuxModalOpen] = useState(false);
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+    const [isExpiryModalOpen, setIsExpiryModalOpen] = useState(false);
     const [auxTab, setAuxTab] = useState<'categories' | 'subcategories' | 'brands' | 'suppliers' | 'terminals'>('categories');
 
     // Aux Inputs
@@ -590,7 +592,7 @@ const Inventory: React.FC<InventoryProps> = ({ products, stockMovements, onAddPr
 
     return (
         <div className="p-4 md:p-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+            <div className="flex flex-col gap-4 mb-6">
                 <h2 className="text-2xl font-bold text-gray-800">Estoque de Produtos</h2>
                 <div className="flex flex-wrap gap-2">
                     <button
@@ -601,25 +603,25 @@ const Inventory: React.FC<InventoryProps> = ({ products, stockMovements, onAddPr
                     </button>
                     <button
                         onClick={() => setIsHistoryModalOpen(true)}
-                        className="bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-50 transition-colors shadow-sm"
+                        className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700 transition-colors shadow-sm"
                     >
                         <History size={18} /> Movimentações
                     </button>
                     <button
-                        onClick={() => onNavigate && onNavigate('expiry-alerts')}
-                        className="bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-50 transition-colors shadow-sm"
+                        onClick={() => setIsExpiryModalOpen(true)}
+                        className="bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-red-700 transition-colors shadow-sm"
                     >
                         <AlertTriangle size={18} /> Validades
                     </button>
                     <button
                         onClick={() => onNavigate && onNavigate('peps')}
-                        className="bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-50 transition-colors shadow-sm"
+                        className="bg-amber-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-amber-700 transition-colors shadow-sm"
                     >
                         <Layers size={18} /> Lotes PEPS
                     </button>
                     <button
                         onClick={() => setIsAuxModalOpen(true)}
-                        className="bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-50 transition-colors shadow-sm"
+                        className="bg-slate-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-slate-700 transition-colors shadow-sm"
                     >
                         <Tags size={18} /> Cadastros Auxiliares
                     </button>
@@ -1401,6 +1403,20 @@ const Inventory: React.FC<InventoryProps> = ({ products, stockMovements, onAddPr
                             >
                                 Ótimo, continuar
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* --- EXPIRY ALERTS MODAL --- */}
+            {isExpiryModalOpen && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 md:p-4">
+                    <div className="bg-white rounded-2xl w-full max-w-5xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className="p-5 bg-slate-800 text-white flex justify-between items-center">
+                            <h3 className="font-bold text-xl flex items-center gap-2"><AlertTriangle size={20} /> Alertas de Vencimento</h3>
+                            <button onClick={() => setIsExpiryModalOpen(false)} className="text-slate-400 hover:text-white"><X size={24} /></button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-0">
+                            <ExpiryAlerts products={products} />
                         </div>
                     </div>
                 </div>

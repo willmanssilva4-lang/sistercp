@@ -9,7 +9,7 @@ import {
     Calendar, Ban, Download, TrendingUp, TrendingDown, DollarSign,
     Package, AlertTriangle, Users, Tag, Truck, Calculator,
     Receipt, Coins, Percent, PlusCircle, RotateCcw, Tags, Eye, Search, Gift,
-    CheckCircle, Clock, CreditCard, ShoppingBag, XCircle, FileText, ChevronDown, ArrowLeft, Store, Sliders, Trash2, Plus
+    CheckCircle, Clock, CreditCard, ShoppingBag, XCircle, FileText, ChevronDown, ArrowLeft, Store, Sliders, Trash2, Plus, History
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -22,6 +22,7 @@ interface ReportsProps {
     onVoidSale: (saleId: string) => void;
     onReturnItems: (saleId: string, items: { itemId: string, qty: number }[]) => void;
     onNavigateToAdvancedReports: () => void;
+    onNavigateToCustomerHistory: () => void;
 }
 
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#6366f1'];
@@ -156,7 +157,7 @@ const TimeRangeConfigModal = ({ isOpen, onClose, ranges, setRanges }: any) => {
     );
 };
 
-const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, currentUser, onVoidSale, onReturnItems, onNavigateToAdvancedReports }) => {
+const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, currentUser, onVoidSale, onReturnItems, onNavigateToAdvancedReports, onNavigateToCustomerHistory }) => {
     const [startDate, setStartDate] = useState(new Date(new Date().setDate(new Date().getDate() - 13)).toISOString().split('T')[0]);
     const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
     const [currentView, setCurrentView] = useState<string | null>(null);
@@ -240,7 +241,8 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
                                     currentView === 'SALES_BY_PRODUCT' ? 'Vendas por Produtos' :
                                         currentView === 'PURCHASES' ? 'Relatório de Compras' :
                                             currentView === 'RETURNS' ? 'Devoluções' :
-                                                currentView === 'CANCELLED' ? 'Vendas Canceladas' : 'Relatório';
+                                                currentView === 'CANCELLED' ? 'Vendas Canceladas' :
+                                                    currentView === 'DRE' ? 'Demonstrativo do Resultado (DRE)' : 'Relatório';
 
         if (format === 'CSV') {
             let csvContent = "data:text/csv;charset=utf-8,";
@@ -327,6 +329,42 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
                     const percent = totalNetExport > 0 ? (h.net / totalNetExport) * 100 : 0;
                     csvContent += `${h.label} (${h.start}-${h.end});${h.count};${h.gross.toFixed(2).replace('.', ',')};${h.discount.toFixed(2).replace('.', ',')};${h.net.toFixed(2).replace('.', ',')};${ticket.toFixed(2).replace('.', ',')};${percent.toFixed(2).replace('.', ',')}%\n`;
                 });
+            } else if (currentView === 'DRE') {
+                const grossRevenue = filteredSales.reduce((acc, s) => acc + s.items.reduce((iAcc, item) => iAcc + (item.retailPrice * item.qty), 0), 0);
+                const totalDiscounts = filteredSales.reduce((acc, s) => acc + s.items.reduce((iAcc, item) => iAcc + ((item.retailPrice - item.appliedPrice) * item.qty), 0), 0);
+                const netRevenue = filteredSales.reduce((acc, s) => acc + s.total, 0);
+                const totalCMV = filteredSales.reduce((acc, s) => acc + s.items.reduce((iAcc, item) => iAcc + (item.costPrice * item.qty), 0), 0);
+                const grossProfit = netRevenue - totalCMV;
+                const operatingExpenses = transactions
+                    .filter(t => t.type === 'EXPENSE' && t.status === 'PAID' && t.date.substring(0, 10) >= startDate && t.date.substring(0, 10) <= endDate && !t.category.includes('Devolução') && !t.category.includes('Estorno') && !t.category.includes('Reembolso') && !t.category.includes('Fornecedores (Estoque)'))
+                    .reduce((acc, t) => acc + t.amount, 0);
+
+                const savedRates = localStorage.getItem('mm_terminal_rates');
+                const terminalRates = savedRates ? JSON.parse(savedRates) : {};
+                let avgDebit = 1.99; let avgCredit = 3.99; let avgPix = 0;
+                const rateKeys = Object.keys(terminalRates);
+                if (rateKeys.length > 0) {
+                    avgDebit = rateKeys.reduce((acc, k) => acc + (terminalRates[k].debit || 0), 0) / rateKeys.length;
+                    avgCredit = rateKeys.reduce((acc, k) => acc + (terminalRates[k].credit || 0), 0) / rateKeys.length;
+                    avgPix = rateKeys.reduce((acc, k) => acc + (terminalRates[k].pix || 0), 0) / rateKeys.length;
+                }
+                const totalFees = filteredSales.reduce((acc, s) => {
+                    if (s.paymentMethod === 'CREDIT') return acc + (s.total * (avgCredit / 100));
+                    if (s.paymentMethod === 'DEBIT') return acc + (s.total * (avgDebit / 100));
+                    if (s.paymentMethod === 'PIX') return acc + (s.total * (avgPix / 100));
+                    return acc;
+                }, 0);
+                const netResult = grossProfit - operatingExpenses - totalFees;
+
+                csvContent += "Descricao;Valor;% Receita\n";
+                csvContent += `(=) RECEITA BRUTA DE VENDAS;${grossRevenue.toFixed(2).replace('.', ',')};100,00%\n`;
+                csvContent += `(-) Deducoes e Descontos;${totalDiscounts.toFixed(2).replace('.', ',')};${(netRevenue > 0 ? (totalDiscounts / netRevenue) * 100 : 0).toFixed(2).replace('.', ',')}%\n`;
+                csvContent += `(=) RECEITA LIQUIDA;${netRevenue.toFixed(2).replace('.', ',')};100,00%\n`;
+                csvContent += `(-) CMV;${totalCMV.toFixed(2).replace('.', ',')};${(netRevenue > 0 ? (totalCMV / netRevenue) * 100 : 0).toFixed(2).replace('.', ',')}%\n`;
+                csvContent += `(=) LUCRO BRUTO;${grossProfit.toFixed(2).replace('.', ',')};${(netRevenue > 0 ? (grossProfit / netRevenue) * 100 : 0).toFixed(2).replace('.', ',')}%\n`;
+                csvContent += `(-) Despesas Operacionais;${operatingExpenses.toFixed(2).replace('.', ',')};${(netRevenue > 0 ? (operatingExpenses / netRevenue) * 100 : 0).toFixed(2).replace('.', ',')}%\n`;
+                csvContent += `(-) Despesas Financeiras;${totalFees.toFixed(2).replace('.', ',')};${(netRevenue > 0 ? (totalFees / netRevenue) * 100 : 0).toFixed(2).replace('.', ',')}%\n`;
+                csvContent += `(=) RESULTADO LIQUIDO;${netResult.toFixed(2).replace('.', ',')};${(netRevenue > 0 ? (netResult / netRevenue) * 100 : 0).toFixed(2).replace('.', ',')}%\n`;
             }
             // Generic fallback for others
             else {
@@ -440,6 +478,56 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
                     head: [['Faixa', 'Qtd', 'Bruto', 'Desc.', 'Líquido', 'Ticket Médio', '% Part.']],
                     body: tableData,
                     startY: 40,
+                });
+            } else if (currentView === 'DRE') {
+                const grossRevenue = filteredSales.reduce((acc, s) => acc + s.items.reduce((iAcc, item) => iAcc + (item.retailPrice * item.qty), 0), 0);
+                const totalDiscounts = filteredSales.reduce((acc, s) => acc + s.items.reduce((iAcc, item) => iAcc + ((item.retailPrice - item.appliedPrice) * item.qty), 0), 0);
+                const netRevenue = filteredSales.reduce((acc, s) => acc + s.total, 0);
+                const totalCMV = filteredSales.reduce((acc, s) => acc + s.items.reduce((iAcc, item) => iAcc + (item.costPrice * item.qty), 0), 0);
+                const grossProfit = netRevenue - totalCMV;
+                const operatingExpenses = transactions
+                    .filter(t => t.type === 'EXPENSE' && t.status === 'PAID' && t.date.substring(0, 10) >= startDate && t.date.substring(0, 10) <= endDate && !t.category.includes('Devolução') && !t.category.includes('Estorno') && !t.category.includes('Reembolso') && !t.category.includes('Fornecedores (Estoque)'))
+                    .reduce((acc, t) => acc + t.amount, 0);
+
+                const savedRates = localStorage.getItem('mm_terminal_rates');
+                const terminalRates = savedRates ? JSON.parse(savedRates) : {};
+                let avgDebit = 1.99; let avgCredit = 3.99; let avgPix = 0;
+                const rateKeys = Object.keys(terminalRates);
+                if (rateKeys.length > 0) {
+                    avgDebit = rateKeys.reduce((acc, k) => acc + (terminalRates[k].debit || 0), 0) / rateKeys.length;
+                    avgCredit = rateKeys.reduce((acc, k) => acc + (terminalRates[k].credit || 0), 0) / rateKeys.length;
+                    avgPix = rateKeys.reduce((acc, k) => acc + (terminalRates[k].pix || 0), 0) / rateKeys.length;
+                }
+                const totalFees = filteredSales.reduce((acc, s) => {
+                    if (s.paymentMethod === 'CREDIT') return acc + (s.total * (avgCredit / 100));
+                    if (s.paymentMethod === 'DEBIT') return acc + (s.total * (avgDebit / 100));
+                    if (s.paymentMethod === 'PIX') return acc + (s.total * (avgPix / 100));
+                    return acc;
+                }, 0);
+                const netResult = grossProfit - operatingExpenses - totalFees;
+
+                const formatC = (v: number) => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+                const formatP = (v: number) => netRevenue > 0 ? `${((v / netRevenue) * 100).toFixed(2)}%` : '0,00%';
+
+                const tableData = [
+                    ['(=) RECEITA BRUTA DE VENDAS', formatC(grossRevenue), '100,00%'],
+                    ['(-) Deduções e Descontos', `(${formatC(totalDiscounts)})`, formatP(totalDiscounts)],
+                    ['(=) RECEITA LÍQUIDA', formatC(netRevenue), '100,00%'],
+                    ['(-) CMV', `(${formatC(totalCMV)})`, formatP(totalCMV)],
+                    ['(=) LUCRO BRUTO', formatC(grossProfit), formatP(grossProfit)],
+                    ['(-) Despesas Operacionais', `(${formatC(operatingExpenses)})`, formatP(operatingExpenses)],
+                    ['(-) Despesas Financeiras', `(${formatC(totalFees)})`, formatP(totalFees)],
+                    ['(=) RESULTADO LÍQUIDO', formatC(netResult), formatP(netResult)]
+                ];
+
+                autoTable(doc, {
+                    head: [['Descrição', 'Valor', '% Receita']],
+                    body: tableData,
+                    startY: 40,
+                    theme: 'striped',
+                    headStyles: { fillColor: [16, 185, 129] },
+                    foot: [['', '', '']],
+                    footStyles: { fillColor: [249, 250, 251] }
                 });
             } else {
                 doc.text("Exportação detalhada em PDF não implementada para este visualização específica.", 14, 50);
@@ -588,7 +676,7 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
                 {/* Chart */}
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-80">
                     <h3 className="text-lg font-bold text-gray-800 mb-4">Evolução de Vendas</h3>
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                         <AreaChart data={salesByDay}>
                             <defs>
                                 <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
@@ -936,6 +1024,170 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
                             </Bar>
                         </BarChart>
                     </ResponsiveContainer>
+                </div>
+            </div>
+        );
+    };
+
+    const renderDRE = () => {
+        // DEBUG: Log filtered sales to verify data
+        console.log('=== D.R.E. DEBUG ===');
+        console.log('Total filteredSales:', filteredSales.length);
+        console.log('Sample sale:', filteredSales[0]);
+        console.log('Date range:', startDate, 'to', endDate);
+
+        // 1. Receita Bruta (Gross Revenue)
+        const grossRevenue = filteredSales.reduce((acc, s) => {
+            return acc + s.items.reduce((iAcc, item) => iAcc + (item.retailPrice * item.qty), 0);
+        }, 0);
+
+        console.log('Gross Revenue:', grossRevenue);
+
+        // 2. Deduções (Discounts)
+        const totalDiscounts = filteredSales.reduce((acc, s) => {
+            return acc + s.items.reduce((iAcc, item) => iAcc + ((item.retailPrice - item.appliedPrice) * item.qty), 0);
+        }, 0);
+        console.log('Total Discounts:', totalDiscounts);
+
+        // 3. Receita Líquida (Net Revenue)
+        const netRevenue = filteredSales.reduce((acc, s) => acc + s.total, 0);
+        console.log('Net Revenue:', netRevenue);
+
+        // 4. CMV (Cost of Goods Sold)
+        const totalCMV = filteredSales.reduce((acc, s) => {
+            return acc + s.items.reduce((iAcc, item) => iAcc + (item.costPrice * item.qty), 0);
+        }, 0);
+        console.log('Total CMV:', totalCMV);
+
+        // 5. Lucro Bruto (Gross Profit)
+        const grossProfit = netRevenue - totalCMV;
+        console.log('Gross Profit:', grossProfit);
+
+        // 6. Despesas Operacionais (Operating Expenses)
+        const operatingExpenses = transactions
+            .filter(t =>
+                t.type === 'EXPENSE' &&
+                t.status === 'PAID' &&
+                t.date.substring(0, 10) >= startDate && t.date.substring(0, 10) <= endDate &&
+                !t.category.includes('Devolução') &&
+                !t.category.includes('Estorno') &&
+                !t.category.includes('Reembolso') &&
+                !t.category.includes('Fornecedores (Estoque)')
+            )
+            .reduce((acc, t) => acc + t.amount, 0);
+        console.log('Operating Expenses:', operatingExpenses);
+
+        // 7. Despesas Financeiras (Card Fees)
+        const savedRates = localStorage.getItem('mm_terminal_rates');
+        const terminalRates = savedRates ? JSON.parse(savedRates) : {};
+        let avgDebit = 1.99;
+        let avgCredit = 3.99;
+        let avgPix = 0;
+        const rateKeys = Object.keys(terminalRates);
+        if (rateKeys.length > 0) {
+            avgDebit = rateKeys.reduce((acc, k) => acc + (terminalRates[k].debit || 0), 0) / rateKeys.length;
+            avgCredit = rateKeys.reduce((acc, k) => acc + (terminalRates[k].credit || 0), 0) / rateKeys.length;
+            avgPix = rateKeys.reduce((acc, k) => acc + (terminalRates[k].pix || 0), 0) / rateKeys.length;
+        }
+        const totalFees = filteredSales.reduce((acc, s) => {
+            if (s.paymentMethod === 'CREDIT') return acc + (s.total * (avgCredit / 100));
+            if (s.paymentMethod === 'DEBIT') return acc + (s.total * (avgDebit / 100));
+            if (s.paymentMethod === 'PIX') return acc + (s.total * (avgPix / 100));
+            return acc;
+        }, 0);
+        console.log('Total Fees:', totalFees);
+
+        // 8. Resultado Líquido (Net Result)
+        const netResult = grossProfit - operatingExpenses - totalFees;
+        console.log('Net Result:', netResult);
+        console.log('=== END D.R.E. DEBUG ===');
+
+        const formatCurrency = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const formatPercent = (val: number) => netRevenue > 0 ? ((val / netRevenue) * 100).toFixed(2).replace('.', ',') + '%' : '0,00%';
+
+        return (
+            <div className="space-y-6 animate-fade-in">
+                <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+                    <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-6 text-white flex justify-between items-center">
+                        <div>
+                            <h3 className="text-xl font-bold">Demonstrativo do Resultado do Exercício (D.R.E)</h3>
+                            <p className="text-emerald-50 text-sm opacity-90">Período: {new Date(startDate).toLocaleDateString('pt-BR')} a {new Date(endDate).toLocaleDateString('pt-BR')}</p>
+                        </div>
+                        <div className="flex gap-2">
+                            <button onClick={() => handleDownload('PDF')} className="p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors" title="Baixar PDF">
+                                <Download size={20} />
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="p-6">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="text-gray-400 border-b uppercase text-[10px] font-bold tracking-widest">
+                                    <th className="text-left py-3 px-4">Descrição</th>
+                                    <th className="text-right py-3 px-4">Valor</th>
+                                    <th className="text-right py-3 px-4">% Receita</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                                <tr className="font-bold text-gray-800 bg-gray-50/50">
+                                    <td className="py-4 px-4">(=) RECEITA BRUTA DE VENDAS</td>
+                                    <td className="py-4 px-4 text-right">{formatCurrency(grossRevenue)}</td>
+                                    <td className="py-4 px-4 text-right">100,00%</td>
+                                </tr>
+                                <tr className="text-red-600">
+                                    <td className="py-3 px-4 pl-8">(-) Deduções e Descontos</td>
+                                    <td className="py-3 px-4 text-right">({formatCurrency(totalDiscounts)})</td>
+                                    <td className="py-3 px-4 text-right">{formatPercent(totalDiscounts)}</td>
+                                </tr>
+                                <tr className="font-bold text-emerald-700 bg-emerald-50/30">
+                                    <td className="py-4 px-4">(=) RECEITA LÍQUIDA</td>
+                                    <td className="py-4 px-4 text-right">{formatCurrency(netRevenue)}</td>
+                                    <td className="py-4 px-4 text-right">100,00%</td>
+                                </tr>
+                                <tr className="text-red-600">
+                                    <td className="py-3 px-4 pl-8">(-) Custo das Mercadorias Vendidas (CMV)</td>
+                                    <td className="py-3 px-4 text-right">({formatCurrency(totalCMV)})</td>
+                                    <td className="py-3 px-4 text-right">{formatPercent(totalCMV)}</td>
+                                </tr>
+                                <tr className="font-bold text-gray-800 bg-gray-50/50">
+                                    <td className="py-4 px-4">(=) LUCRO BRUTO</td>
+                                    <td className="py-4 px-4 text-right">{formatCurrency(grossProfit)}</td>
+                                    <td className="py-4 px-4 text-right">{formatPercent(grossProfit)}</td>
+                                </tr>
+                                <tr className="text-red-600">
+                                    <td className="py-3 px-4 pl-8">(-) Despesas Operacionais</td>
+                                    <td className="py-3 px-4 text-right">({formatCurrency(operatingExpenses)})</td>
+                                    <td className="py-3 px-4 text-right">{formatPercent(operatingExpenses)}</td>
+                                </tr>
+                                <tr className="text-red-600">
+                                    <td className="py-3 px-4 pl-8">(-) Despesas Financeiras (Taxas de Cartão)</td>
+                                    <td className="py-3 px-4 text-right">({formatCurrency(totalFees)})</td>
+                                    <td className="py-3 px-4 text-right">{formatPercent(totalFees)}</td>
+                                </tr>
+                                <tr className={`font-black text-lg ${netResult >= 0 ? 'text-emerald-600 bg-emerald-50' : 'text-red-600 bg-red-50'}`}>
+                                    <td className="py-6 px-4 uppercase tracking-wider">(=) RESULTADO LÍQUIDO DO PERÍODO</td>
+                                    <td className="py-6 px-4 text-right">{formatCurrency(netResult)}</td>
+                                    <td className="py-6 px-4 text-right">{formatPercent(netResult)}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <p className="text-gray-500 text-xs font-bold uppercase mb-2">Margem Bruta</p>
+                        <p className="text-3xl font-black text-gray-800">{netRevenue > 0 ? ((grossProfit / netRevenue) * 100).toFixed(2).replace('.', ',') : '0,00'}%</p>
+                    </div>
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <p className="text-gray-500 text-xs font-bold uppercase mb-2">Margem Líquida</p>
+                        <p className="text-3xl font-black text-gray-800">{netRevenue > 0 ? ((netResult / netRevenue) * 100).toFixed(2).replace('.', ',') : '0,00'}%</p>
+                    </div>
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <p className="text-gray-500 text-xs font-bold uppercase mb-2">Ponto de Equilíbrio (Aprox.)</p>
+                        <p className="text-3xl font-black text-gray-800">{formatCurrency((operatingExpenses + totalFees) / (grossProfit / netRevenue || 1))}</p>
+                    </div>
                 </div>
             </div>
         );
@@ -2166,6 +2418,7 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
                     {currentView === 'PURCHASES' && renderPurchasesReport()}
                     {currentView === 'RETURNS' && renderCancelledOrReturns('RETURNS')}
                     {currentView === 'CANCELLED' && renderCancelledOrReturns('CANCELLED')}
+                    {currentView === 'DRE' && renderDRE()}
                 </div>
             ) : (
                 <div className="flex flex-col gap-4 max-w-4xl mx-auto">
@@ -2180,6 +2433,12 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
                         description="Somatório das vendas, detalhando custos, comissões, lucros e taxas em um período, podendo ser agrupadas por dia, mês ou ano."
                         icon={Calculator}
                         onClick={() => setCurrentView('SALES_COSTS')}
+                    />
+                    <ReportMenuCard
+                        title="D.R.E - Demonstrativo do Resultado"
+                        description="Visão contábil completa: Receitas, Custos, Despesas e Lucro Líquido."
+                        icon={Calculator}
+                        onClick={() => setCurrentView('DRE')}
                     />
                     <ReportMenuCard
                         title="Gráfico por forma de pagamento no período"
@@ -2251,6 +2510,12 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
                         description="Detalhamento das vendas canceladas que foram estornado o valor pago."
                         icon={XCircle}
                         onClick={() => setCurrentView('CANCELLED')}
+                    />
+                    <ReportMenuCard
+                        title="Histórico de Clientes"
+                        description="Análise detalhada de compras por cliente e comportamento de consumo."
+                        icon={History}
+                        onClick={onNavigateToCustomerHistory}
                     />
                 </div>
             )}

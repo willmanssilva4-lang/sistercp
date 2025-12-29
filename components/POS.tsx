@@ -665,18 +665,29 @@ const POS: React.FC<POSProps> = ({ products, promotions = [], kits = [], onProce
                             </div>
 
                             {/* Quantity Input (Popup style when pending) */}
-                            <div className={`flex items-center bg-white border-2 rounded-xl overflow-hidden w-32 transition-all ${pendingProduct ? 'border-emerald-600 ring-4 ring-emerald-100 shadow-xl scale-105 z-10' : 'border-gray-200 opacity-60'}`}>
-                                <span className="bg-gray-100 text-gray-500 px-3 h-full flex items-center text-sm font-bold border-r">QTD</span>
-                                <input
-                                    ref={quantityInputRef}
-                                    type="number"
-                                    min="1"
-                                    value={quantityInput}
-                                    onChange={(e) => setQuantityInput(Math.max(1, parseInt(e.target.value) || 1))}
-                                    onKeyDown={handleQuantityKeyDown}
-                                    className="w-full px-2 py-1 outline-none font-bold text-2xl text-gray-800 text-center"
-                                    disabled={!pendingProduct}
-                                />
+                            <div className="flex gap-2">
+                                <div className={`flex items-center bg-white border-2 rounded-xl overflow-hidden w-24 sm:w-32 transition-all ${pendingProduct ? 'border-emerald-600 ring-4 ring-emerald-100 shadow-xl scale-105 z-10' : 'border-gray-200 opacity-60'}`}>
+                                    <span className="bg-gray-100 text-gray-500 px-2 sm:px-3 h-full flex items-center text-[10px] sm:text-sm font-bold border-r">QTD</span>
+                                    <input
+                                        ref={quantityInputRef}
+                                        type="number"
+                                        min="1"
+                                        value={quantityInput}
+                                        onChange={(e) => setQuantityInput(Math.max(1, parseInt(e.target.value) || 1))}
+                                        onKeyDown={handleQuantityKeyDown}
+                                        className="w-full px-1 sm:px-2 py-1 outline-none font-bold text-xl sm:text-2xl text-gray-800 text-center"
+                                        disabled={!pendingProduct}
+                                    />
+                                </div>
+                                {pendingProduct && (
+                                    <button
+                                        onClick={() => addToCart(pendingProduct, pendingDiscount)}
+                                        className="bg-emerald-600 text-white p-3 rounded-xl shadow-lg flex items-center justify-center"
+                                        title="Confirmar"
+                                    >
+                                        <Check size={24} />
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -698,7 +709,12 @@ const POS: React.FC<POSProps> = ({ products, promotions = [], kits = [], onProce
                                     const hasActivePromo = stdPrice !== product.retailPrice && !isKit;
 
                                     return (
-                                        <div key={product.id} className={`p-3 rounded-lg flex justify-between items-center border-l-4 ${isSelected ? 'bg-emerald-50 border-emerald-500 shadow-sm' : 'border-transparent hover:bg-gray-50'}`}>
+                                        <div
+                                            key={product.id}
+                                            onClick={() => prepareProductToAdd(product)}
+                                            onMouseEnter={() => setSearchListIndex(index)}
+                                            className={`p-3 rounded-lg flex justify-between items-center border-l-4 cursor-pointer transition-all ${isSelected ? 'bg-emerald-50 border-emerald-500 shadow-sm' : 'border-transparent hover:bg-gray-50'}`}
+                                        >
                                             <div>
                                                 <div className="flex items-center gap-2">
                                                     {isKit && <span className="bg-purple-100 text-purple-700 text-[10px] font-bold px-1.5 rounded">KIT</span>}
@@ -762,7 +778,8 @@ const POS: React.FC<POSProps> = ({ products, promotions = [], kits = [], onProce
 
                                 return (
                                     <div key={item.cartItemId}
-                                        className={`p-3 rounded-lg border flex justify-between items-center transition-all 
+                                        onClick={() => setSelectedCartIndex(index)}
+                                        className={`p-3 rounded-lg border flex justify-between items-center transition-all cursor-pointer
                                 ${isSelected ? 'bg-blue-50 border-blue-500 shadow-md scale-[1.02] z-10' : 'bg-white border-gray-100'}
                             `}>
                                         <div className="flex-1">
@@ -782,9 +799,17 @@ const POS: React.FC<POSProps> = ({ products, promotions = [], kits = [], onProce
                                                 {item.unit === 'KIT' && <span className="bg-purple-100 text-purple-600 text-[10px] font-bold px-1 rounded">KIT</span>}
                                             </div>
                                         </div>
-                                        <div className="text-right">
+                                        <div className="text-right flex flex-col items-end gap-1">
                                             <p className="font-bold text-gray-900">R$ {item.subtotal.toFixed(2)}</p>
-                                            {isSelected && <span className="text-[10px] text-blue-600 font-bold uppercase tracking-wide">Selecionado</span>}
+                                            {isSelected ? (
+                                                <div className="flex items-center gap-1">
+                                                    <button onClick={(e) => { e.stopPropagation(); updateQty(index, -1); }} className="p-1.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200"><Minus size={14} /></button>
+                                                    <button onClick={(e) => { e.stopPropagation(); updateQty(index, 1); }} className="p-1.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200"><Plus size={14} /></button>
+                                                    <button onClick={(e) => { e.stopPropagation(); removeFromCart(index); }} className="p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-100"><Trash2 size={14} /></button>
+                                                </div>
+                                            ) : (
+                                                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Toque para editar</span>
+                                            )}
                                         </div>
                                     </div>
                                 );
