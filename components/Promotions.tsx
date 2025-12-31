@@ -19,6 +19,16 @@ interface PromotionsProps {
 const Promotions: React.FC<PromotionsProps> = ({
     products, promotions, kits, onAddPromotion, onUpdatePromotion, onDeletePromotion, onAddKit, onUpdateKit, onDeleteKit, userRole
 }) => {
+    // Helper to get local date string in YYYY-MM-DD format
+    const getLocalDateString = (daysOffset: number = 0) => {
+        const now = new Date();
+        now.setDate(now.getDate() + daysOffset);
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
     const [activeTab, setActiveTab] = useState<'OFFERS' | 'KITS' | 'HISTORY'>('OFFERS');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -32,8 +42,8 @@ const Promotions: React.FC<PromotionsProps> = ({
     const [promoForm, setPromoForm] = useState({
         name: '',
         products: [] as { productCode: string; promotionalPrice: number }[],
-        startDate: new Date().toISOString().split('T')[0],
-        endDate: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
+        startDate: getLocalDateString(),
+        endDate: getLocalDateString(7)
     });
 
     const [promoProductSearch, setPromoProductSearch] = useState('');
@@ -103,8 +113,8 @@ const Promotions: React.FC<PromotionsProps> = ({
         setPromoForm({
             name: '',
             products: [],
-            startDate: new Date().toISOString().split('T')[0],
-            endDate: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
+            startDate: getLocalDateString(),
+            endDate: getLocalDateString(7)
         });
     };
 
@@ -284,8 +294,8 @@ const Promotions: React.FC<PromotionsProps> = ({
                             setPromoForm({
                                 name: '',
                                 products: [],
-                                startDate: new Date().toISOString().split('T')[0],
-                                endDate: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
+                                startDate: getLocalDateString(),
+                                endDate: getLocalDateString(7)
                             });
                         }
                         setIsModalOpen(true);
@@ -335,7 +345,11 @@ const Promotions: React.FC<PromotionsProps> = ({
                         <tbody className="divide-y divide-gray-100 text-sm">
                             {visiblePromotions.map(group => {
                                 const p = group[0];
-                                const isDateValid = new Date() >= new Date(p.startDate) && new Date() <= new Date(p.endDate);
+                                // Ensure we have just the date part YYYY-MM-DD
+                                const startStr = p.startDate.split('T')[0];
+                                const endStr = p.endDate.split('T')[0];
+
+                                const isDateValid = new Date() >= new Date(startStr + 'T00:00:00') && new Date() <= new Date(endStr + 'T23:59:59');
                                 const allActive = group.every(item => item.active);
                                 const statusLabel = !allActive ? 'Desativada' : (isDateValid ? 'Ativa' : 'Expirada/Futura');
                                 const statusColor = !allActive ? 'bg-gray-100 text-gray-500 border-gray-200' : (isDateValid ? 'bg-green-100 text-green-700 border-green-200' : 'bg-yellow-100 text-yellow-700 border-yellow-200');
@@ -353,7 +367,10 @@ const Promotions: React.FC<PromotionsProps> = ({
                                             </div>
                                         </td>
                                         <td className="p-4 text-gray-600">
-                                            <div className="flex items-center gap-1"><Calendar size={12} /> {new Date(p.startDate).toLocaleDateString('pt-BR')} até {new Date(p.endDate).toLocaleDateString('pt-BR')}</div>
+                                            <div className="flex items-center gap-1">
+                                                <Calendar size={12} />
+                                                {startStr.split('-').reverse().join('/')} até {endStr.split('-').reverse().join('/')}
+                                            </div>
                                         </td>
                                         <td className="p-4 text-right text-gray-500">
                                             {group.map(item => (

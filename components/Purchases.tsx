@@ -22,14 +22,23 @@ interface PurchaseItem extends Product {
 }
 
 const Purchases: React.FC<PurchasesProps> = ({ products, currentUser, onProcessPurchase, transactions, onCancelPurchase, onBack, suppliersList: propSuppliersList }) => {
+    // Helper to get local date string in YYYY-MM-DD format
+    const getLocalDateString = (daysOffset: number = 0) => {
+        const now = new Date();
+        now.setDate(now.getDate() + daysOffset);
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
     // --- STATE ---
     const [activeTab, setActiveTab] = useState<'NEW_PURCHASE' | 'HISTORY'>('NEW_PURCHASE');
     const [cart, setCart] = useState<PurchaseItem[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [supplier, setSupplier] = useState('');
     const [invoiceNumber, setInvoiceNumber] = useState('');
-    const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
-    const [dueDate, setDueDate] = useState(new Date().toISOString().split('T')[0]);
+    const [purchaseDate, setPurchaseDate] = useState(getLocalDateString());
+    const [dueDate, setDueDate] = useState(getLocalDateString());
     const [paymentStatus, setPaymentStatus] = useState<'PAID' | 'PENDING'>('PENDING');
     const [installments, setInstallments] = useState(1);
     const [installmentInterval, setInstallmentInterval] = useState(30);

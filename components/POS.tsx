@@ -3,6 +3,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Product, CartItem, Sale, Promotion, ProductKit, Customer } from '../types';
 import { Search, ShoppingCart, Trash2, Plus, Minus, CreditCard, Banknote, RotateCcw, Scan, Volume2, Percent, X, Check, Tag, Keyboard, DollarSign, TrendingDown, TrendingUp } from 'lucide-react';
 import { useThermalPrinter } from '../src/hooks/useThermalPrinter';
+import { usePeople } from '../contexts/PeopleContext';
+import { UserRole } from '../types';
 
 interface POSProps {
     products: Product[];
@@ -63,6 +65,14 @@ const POS: React.FC<POSProps> = ({ products, promotions = [], kits = [], onProce
 
     // Success Modal
     const [successModal, setSuccessModal] = useState<{ open: boolean; message: string }>({ open: false, message: '' });
+
+    // --- VOID ITEM MODAL STATE ---
+    const [voidModalOpen, setVoidModalOpen] = useState(false);
+    const [voidItemIndexStr, setVoidItemIndexStr] = useState('');
+    const [voidUsername, setVoidUsername] = useState('');
+    const [voidPassword, setVoidPassword] = useState('');
+
+    const { users } = usePeople();
 
 
 
@@ -366,6 +376,66 @@ const POS: React.FC<POSProps> = ({ products, promotions = [], kits = [], onProce
         searchInputRef.current?.focus();
     };
 
+    const handleVoidConfirm = (e: React.FormEvent) => {
+        e.preventDefault();
+
+        const inputStr = voidItemIndexStr.trim();
+        let indexToRemove = -1;
+
+        // 1. Try to find by Product Code (search from end to beginning)
+        for (let i = cart.length - 1; i >= 0; i--) {
+            if (cart[i].code === inputStr) {
+                indexToRemove = i;
+                break;
+            }
+        }
+
+        // 2. If not found by code, try as Item Index
+        if (indexToRemove === -1) {
+            const parsedIndex = parseInt(inputStr) - 1; // User enters 1-based index
+            if (!isNaN(parsedIndex) && parsedIndex >= 0 && parsedIndex < cart.length) {
+                indexToRemove = parsedIndex;
+            }
+        }
+
+        if (indexToRemove === -1) {
+            onError('Item não encontrado (Código ou Número inválido)!');
+            return;
+        }
+
+        // 3. Validate Supervisor
+        const supervisor = users.find(u => u.email === voidUsername || u.name === voidUsername);
+        if (!supervisor) {
+            onError('Usuário supervisor não encontrado!');
+            return;
+        }
+
+        // Check Role
+        const role = String(supervisor.role).toUpperCase();
+        if (role !== UserRole.MANAGER && role !== UserRole.ADMIN) {
+            onError('Usuário não tem permissão de supervisor (Gerente/Admin)!');
+            return;
+        }
+
+        // Check Password
+        if (!voidPassword) {
+            onError('Informe a senha!');
+            return;
+        }
+
+        // 4. Remove Item
+        const itemToRemove = cart[indexToRemove];
+        setCart(prev => prev.filter((_, i) => i !== indexToRemove));
+
+        setVoidModalOpen(false);
+        setVoidItemIndexStr('');
+        setVoidUsername('');
+        setVoidPassword('');
+        playBeep();
+        onSuccess(`Item ${indexToRemove + 1} (${itemToRemove.name}) estornado por ${supervisor.name}.`);
+        searchInputRef.current?.focus();
+    };
+
     // --- KEYBOARD HANDLERS ---
 
     const prepareProductToAdd = (product: Product, discount?: number) => {
@@ -487,6 +557,13 @@ const POS: React.FC<POSProps> = ({ products, promotions = [], kits = [], onProce
             return;
         }
 
+        // Void Item Shortcut (F9) - Only if NOT selecting an item (to avoid conflict with Discount)
+        if (e.key === 'F9' && selectedCartIndex === -1 && !paymentModalOpen && !isDiscountModalOpen && !cashMovementModalOpen && !isCustomerModalOpen) {
+            e.preventDefault();
+            setVoidModalOpen(true);
+            return;
+        }
+
         // Payment Modal Shortcuts
         if (paymentModalOpen) {
             if (e.key === 'Escape') setPaymentModalOpen(false);
@@ -546,6 +623,14 @@ const POS: React.FC<POSProps> = ({ products, promotions = [], kits = [], onProce
         if (isCustomerModalOpen) {
             if (e.key === 'Escape') {
                 setIsCustomerModalOpen(false);
+            }
+            return;
+        }
+
+        if (voidModalOpen) {
+            if (e.key === 'Escape') {
+                setVoidModalOpen(false);
+                searchInputRef.current?.focus();
             }
             return;
         }
@@ -779,38 +864,45 @@ const POS: React.FC<POSProps> = ({ products, promotions = [], kits = [], onProce
                                 return (
                                     <div key={item.cartItemId}
                                         onClick={() => setSelectedCartIndex(index)}
-                                        className={`p-3 rounded-lg border flex justify-between items-center transition-all cursor-pointer
+                                        className={`p-2 rounded-lg border flex flex-col transition-all cursor-pointer
                                 ${isSelected ? 'bg-blue-50 border-blue-500 shadow-md scale-[1.02] z-10' : 'bg-white border-gray-100'}
                             `}>
-                                        <div className="flex-1">
-                                            <p className="font-bold text-gray-800 text-sm line-clamp-1">{item.name}</p>
-                                            <div className="flex items-center gap-3 mt-1">
-                                                <div className={`flex items-center rounded border px-2 py-0.5 text-xs font-bold ${isSelected ? 'bg-white border-blue-200' : 'bg-gray-50 border-gray-200'}`}>
-                                                    {item.qty} <span className="text-gray-400 font-normal mx-1">x</span> R$ {item.appliedPrice.toFixed(2)}
+                                        <div className="flex justify-between items-start">
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2 text-sm mb-1">
+                                                    <span className="font-bold text-gray-500 font-mono">{String(index + 1).padStart(3, '0')}</span>
+                                                    <span className="text-xs text-gray-400">{item.code}</span>
+                                                    <span className="font-bold text-gray-800 line-clamp-1">{item.name}</span>
+                                                    {item.unit === 'KIT' && <span className="bg-purple-100 text-purple-600 text-[10px] font-bold px-1 rounded">KIT</span>}
                                                 </div>
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); setItemDiscountCartId(item.cartItemId); setItemDiscountValue(''); }}
-                                                    className={`p-1 rounded text-xs flex items-center gap-1 ${hasDiscount ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600'}`}
-                                                    title="Desconto Individual"
-                                                >
-                                                    <Tag size={12} />
-                                                    {hasDiscount ? `-${Math.round(discountRatio * 100)}%` : '%'}
-                                                </button>
-                                                {item.unit === 'KIT' && <span className="bg-purple-100 text-purple-600 text-[10px] font-bold px-1 rounded">KIT</span>}
+                                                <div className="flex items-center gap-4 text-sm font-mono text-gray-600 pl-8">
+                                                    <span>{item.qty.toFixed(3)} {item.unit}</span>
+                                                    <span className="text-gray-400">x</span>
+                                                    <span>{item.appliedPrice.toFixed(2)}</span>
+
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); setItemDiscountCartId(item.cartItemId); setItemDiscountValue(''); }}
+                                                        className={`ml-2 p-0.5 rounded text-[10px] flex items-center gap-1 ${hasDiscount ? 'bg-green-100 text-green-700' : 'text-gray-300 hover:text-gray-500'}`}
+                                                        title="Desconto Individual"
+                                                    >
+                                                        <Tag size={10} />
+                                                        {hasDiscount && <span>-{Math.round(discountRatio * 100)}%</span>}
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div className="text-right">
+                                                <p className="font-bold text-gray-900 text-sm">{item.subtotal.toFixed(2)}</p>
                                             </div>
                                         </div>
-                                        <div className="text-right flex flex-col items-end gap-1">
-                                            <p className="font-bold text-gray-900">R$ {item.subtotal.toFixed(2)}</p>
-                                            {isSelected ? (
-                                                <div className="flex items-center gap-1">
-                                                    <button onClick={(e) => { e.stopPropagation(); updateQty(index, -1); }} className="p-1.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200"><Minus size={14} /></button>
-                                                    <button onClick={(e) => { e.stopPropagation(); updateQty(index, 1); }} className="p-1.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200"><Plus size={14} /></button>
-                                                    <button onClick={(e) => { e.stopPropagation(); removeFromCart(index); }} className="p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-100"><Trash2 size={14} /></button>
-                                                </div>
-                                            ) : (
-                                                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Toque para editar</span>
-                                            )}
-                                        </div>
+
+                                        {isSelected && (
+                                            <div className="flex justify-end items-center gap-2 mt-2 pt-2 border-t border-blue-200">
+                                                <button onClick={(e) => { e.stopPropagation(); updateQty(index, -1); }} className="p-1.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200"><Minus size={14} /></button>
+                                                <button onClick={(e) => { e.stopPropagation(); updateQty(index, 1); }} className="p-1.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200"><Plus size={14} /></button>
+                                                <button onClick={(e) => { e.stopPropagation(); removeFromCart(index); }} className="p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-100"><Trash2 size={14} /></button>
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })
@@ -868,6 +960,7 @@ const POS: React.FC<POSProps> = ({ products, promotions = [], kits = [], onProce
                     <span className="flex items-center gap-1"><kbd className="bg-slate-700 px-1.5 rounded text-white font-mono border border-slate-600">F2</kbd> Pagar</span>
                     <span className="flex items-center gap-1"><kbd className="bg-slate-700 px-1.5 rounded text-white font-mono border border-slate-600">F3</kbd> Desc. Global</span>
                     <span className="flex items-center gap-1"><kbd className="bg-slate-700 px-1.5 rounded text-white font-mono border border-slate-600">F4</kbd> Busca</span>
+                    <span className="flex items-center gap-1"><kbd className="bg-slate-700 px-1.5 rounded text-white font-mono border border-slate-600">F9</kbd> Estornar</span>
                     <span className="flex items-center gap-1"><kbd className="bg-slate-700 px-1.5 rounded text-white font-mono border border-slate-600">Setas</kbd> Navegar</span>
                 </div>
                 <div className="flex gap-4">
@@ -1291,6 +1384,67 @@ const POS: React.FC<POSProps> = ({ products, promotions = [], kits = [], onProce
                                 <div className="p-4 text-center text-gray-500">Nenhum cliente cadastrado.</div>
                             )}
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Void Item Modal */}
+            {voidModalOpen && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[80] p-4">
+                    <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl animate-scale-in p-6">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-bold text-red-600 flex items-center gap-2">
+                                <Trash2 size={20} /> Estornar Item
+                            </h3>
+                            <button onClick={() => setVoidModalOpen(false)}><X size={20} className="text-gray-400" /></button>
+                        </div>
+
+                        <form onSubmit={handleVoidConfirm} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-1">Número do Item ou Código</label>
+                                <input
+                                    type="text"
+                                    required
+                                    autoFocus
+                                    className="w-full border-2 border-gray-200 focus:border-red-500 rounded-xl p-2 text-xl font-bold text-center outline-none"
+                                    placeholder="Ex: 1 ou 789..."
+                                    value={voidItemIndexStr}
+                                    onChange={e => setVoidItemIndexStr(e.target.value)}
+                                />
+                                <p className="text-xs text-gray-400 mt-1 text-center">Digite o número do item na lista ou leia o código de barras</p>
+                            </div>
+
+                            <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 space-y-3">
+                                <p className="text-xs font-bold text-gray-500 uppercase text-center mb-2">Autorização do Supervisor</p>
+                                <div>
+                                    <input
+                                        type="text"
+                                        required
+                                        className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:border-gray-500 text-sm"
+                                        placeholder="Usuário / Email"
+                                        value={voidUsername}
+                                        onChange={e => setVoidUsername(e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                    <input
+                                        type="password"
+                                        required
+                                        className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:border-gray-500 text-sm"
+                                        placeholder="Senha"
+                                        value={voidPassword}
+                                        onChange={e => setVoidPassword(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                            <button
+                                type="submit"
+                                className="w-full bg-red-600 text-white font-bold py-3 rounded-xl hover:bg-red-700 transition-colors shadow-lg shadow-red-200"
+                            >
+                                Confirmar Estorno
+                            </button>
+                        </form>
                     </div>
                 </div>
             )}

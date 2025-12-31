@@ -35,8 +35,18 @@ interface ProfitMarginReportsProps {
 }
 
 export default function ProfitMarginReports({ products, sales }: ProfitMarginReportsProps) {
-    const [startDate, setStartDate] = useState('');
-    const [endDate, setEndDate] = useState('');
+    // Helper to get local date string in YYYY-MM-DD format
+    const getLocalDateString = (daysOffset: number = 0) => {
+        const now = new Date();
+        now.setDate(now.getDate() + daysOffset);
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    const [startDate, setStartDate] = useState(getLocalDateString(-30));
+    const [endDate, setEndDate] = useState(getLocalDateString());
     const [selectedCategory, setSelectedCategory] = useState('all');
     const [profitData, setProfitData] = useState<ProfitData[]>([]);
     const [summary, setSummary] = useState({
@@ -46,14 +56,7 @@ export default function ProfitMarginReports({ products, sales }: ProfitMarginRep
         averageMargin: 0
     });
 
-    useEffect(() => {
-        // Set default dates (last 30 days)
-        const end = new Date();
-        const start = new Date();
-        start.setDate(start.getDate() - 30);
-        setStartDate(start.toISOString().split('T')[0]);
-        setEndDate(end.toISOString().split('T')[0]);
-    }, []);
+    // Default dates initialized in state
 
     useEffect(() => {
         if (startDate && endDate) {

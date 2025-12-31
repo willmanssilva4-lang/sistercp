@@ -1,4 +1,4 @@
--- Migration: Create Customers Table
+g-- Migration: Create Customers Table
 -- Date: 2025-12-26
 -- Description: Creates the customers table for CRM and Credit management
 

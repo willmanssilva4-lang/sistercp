@@ -19,11 +19,21 @@ interface AdvancedReportsProps {
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
 const AdvancedReports: React.FC<AdvancedReportsProps> = ({ sales, products }) => {
+    // Helper to get local date string in YYYY-MM-DD format
+    const getLocalDateString = (daysOffset: number = 0) => {
+        const now = new Date();
+        now.setDate(now.getDate() + daysOffset);
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
     const [currentView, setCurrentView] = useState<string | null>(null);
-    const [startDate, setStartDate] = useState(new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0]);
-    const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
-    const [compareStartDate, setCompareStartDate] = useState(new Date(new Date().setDate(new Date().getDate() - 60)).toISOString().split('T')[0]);
-    const [compareEndDate, setCompareEndDate] = useState(new Date(new Date().setDate(new Date().getDate() - 31)).toISOString().split('T')[0]);
+    const [startDate, setStartDate] = useState(getLocalDateString(-30));
+    const [endDate, setEndDate] = useState(getLocalDateString());
+    const [compareStartDate, setCompareStartDate] = useState(getLocalDateString(-60));
+    const [compareEndDate, setCompareEndDate] = useState(getLocalDateString(-31));
 
     // Filtrar vendas por período
     const filteredSales = useMemo(() => {
@@ -361,7 +371,7 @@ const AdvancedReports: React.FC<AdvancedReportsProps> = ({ sales, products }) =>
 
                     <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm h-80">
                         <h3 className="text-lg font-bold text-gray-800 mb-4">Comparação Visual</h3>
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                             <BarChart data={[
                                 { name: 'Período Anterior', value: periodComparison.previous },
                                 { name: 'Período Atual', value: periodComparison.current }
@@ -381,7 +391,7 @@ const AdvancedReports: React.FC<AdvancedReportsProps> = ({ sales, products }) =>
             {currentView === 'TRENDS' && (
                 <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm h-96">
                     <h3 className="text-lg font-bold text-gray-800 mb-4">Tendência dos Últimos 7 Dias</h3>
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                         <ComposedChart data={trendAnalysis}>
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis dataKey="date" />
@@ -468,7 +478,7 @@ const AdvancedReports: React.FC<AdvancedReportsProps> = ({ sales, products }) =>
                 <div className="space-y-6">
                     <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm h-96">
                         <h3 className="text-lg font-bold text-gray-800 mb-4">Top 10 Produtos Mais Vendidos</h3>
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                             <BarChart data={topProducts} layout="vertical">
                                 <CartesianGrid strokeDasharray="3 3" />
                                 <XAxis type="number" />

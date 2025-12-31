@@ -36,20 +36,23 @@ interface CustomerPurchaseHistoryProps {
 }
 
 export default function CustomerPurchaseHistory({ customers, sales }: CustomerPurchaseHistoryProps) {
+    // Helper to get local date string in YYYY-MM-DD format
+    const getLocalDateString = (daysOffset: number = 0) => {
+        const now = new Date();
+        now.setDate(now.getDate() + daysOffset);
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
     const [selectedCustomer, setSelectedCustomer] = useState<string>('');
     const [historyData, setHistoryData] = useState<CustomerPurchaseHistory | null>(null);
-    const [startDate, setStartDate] = useState('');
-    const [endDate, setEndDate] = useState('');
+    const [startDate, setStartDate] = useState(getLocalDateString(-90));
+    const [endDate, setEndDate] = useState(getLocalDateString());
     const [searchTerm, setSearchTerm] = useState('');
 
-    useEffect(() => {
-        // Set default dates (last 90 days)
-        const end = new Date();
-        const start = new Date();
-        start.setDate(start.getDate() - 90);
-        setStartDate(start.toISOString().split('T')[0]);
-        setEndDate(end.toISOString().split('T')[0]);
-    }, []);
+    // Default dates initialized in state
 
     useEffect(() => {
         if (selectedCustomer) {
@@ -357,8 +360,8 @@ export default function CustomerPurchaseHistory({ customers, sales }: CustomerPu
                                             </td>
                                             <td className="px-4 py-3 text-sm">
                                                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${purchase.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
-                                                        purchase.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                                                            'bg-red-100 text-red-800'
+                                                    purchase.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                                                        'bg-red-100 text-red-800'
                                                     }`}>
                                                     {purchase.status}
                                                 </span>

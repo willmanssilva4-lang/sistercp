@@ -293,6 +293,7 @@ const App: React.FC = () => {
           products={products}
           transactions={transactions}
           currentUser={userWithRole}
+          promotions={promotions}
           onVoidSale={voidSale}
           onReturnItems={returnItems}
           onNavigateToAdvancedReports={() => setCurrentView('advanced-reports')}
@@ -426,6 +427,7 @@ const App: React.FC = () => {
                 <div className="p-6 text-center">
                   <p className="text-gray-700 text-lg mb-6">{successModal.message}</p>
                   <button
+                    autoFocus
                     onClick={() => setSuccessModal({ open: false, message: '' })}
                     className="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-200"
                   >

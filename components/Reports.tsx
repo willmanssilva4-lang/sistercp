@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Sale, Product, Transaction, User } from '../types';
+import { Sale, Product, Transaction, User, Promotion } from '../types';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell, Legend, AreaChart, Area, ComposedChart, Line
@@ -19,6 +19,7 @@ interface ReportsProps {
     products: Product[];
     transactions: Transaction[];
     currentUser: User;
+    promotions?: Promotion[];
     onVoidSale: (saleId: string) => void;
     onReturnItems: (saleId: string, items: { itemId: string, qty: number }[]) => void;
     onNavigateToAdvancedReports: () => void;
@@ -157,9 +158,18 @@ const TimeRangeConfigModal = ({ isOpen, onClose, ranges, setRanges }: any) => {
     );
 };
 
-const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, currentUser, onVoidSale, onReturnItems, onNavigateToAdvancedReports, onNavigateToCustomerHistory }) => {
-    const [startDate, setStartDate] = useState(new Date(new Date().setDate(new Date().getDate() - 13)).toISOString().split('T')[0]);
-    const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
+const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, currentUser, promotions = [], onVoidSale, onReturnItems, onNavigateToAdvancedReports, onNavigateToCustomerHistory }) => {
+    // Helper to get local date string in YYYY-MM-DD format
+    const getLocalDateString = () => {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    const [startDate, setStartDate] = useState(getLocalDateString());
+    const [endDate, setEndDate] = useState(getLocalDateString());
     const [currentView, setCurrentView] = useState<string | null>(null);
 
     // States for Manage Sale Modal
@@ -676,7 +686,7 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
                 {/* Chart */}
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-80">
                     <h3 className="text-lg font-bold text-gray-800 mb-4">Evolução de Vendas</h3>
-                    <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                         <AreaChart data={salesByDay}>
                             <defs>
                                 <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
@@ -815,8 +825,18 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
 
         // 5. Promotional Performance
         const promoSales = filteredSales.reduce((acc, s) => {
+            const saleDate = s.timestamp.substring(0, 10); // YYYY-MM-DD
             const promoItemsTotal = s.items.reduce((iAcc, item) => {
-                if (item.appliedPrice < (item.retailPrice - 0.01)) {
+                // Check if item corresponds to a promotion active at that date
+                const matchingPromo = promotions.find(p =>
+                    p.productCode === item.code &&
+                    saleDate >= p.startDate &&
+                    saleDate <= p.endDate &&
+                    // Check if price matches (approximate for float)
+                    Math.abs(item.appliedPrice - p.promotionalPrice) < 0.05
+                );
+
+                if (matchingPromo) {
                     return iAcc + (item.appliedPrice * item.qty);
                 }
                 return iAcc;
@@ -825,8 +845,16 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
         }, 0);
 
         const promoCMV = filteredSales.reduce((acc, s) => {
+            const saleDate = s.timestamp.substring(0, 10);
             const promoItemsCost = s.items.reduce((iAcc, item) => {
-                if (item.appliedPrice < (item.retailPrice - 0.01)) {
+                const matchingPromo = promotions.find(p =>
+                    p.productCode === item.code &&
+                    saleDate >= p.startDate &&
+                    saleDate <= p.endDate &&
+                    Math.abs(item.appliedPrice - p.promotionalPrice) < 0.05
+                );
+
+                if (matchingPromo) {
                     return iAcc + (item.costPrice * item.qty);
                 }
                 return iAcc;
@@ -991,7 +1019,7 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
                         </div>
                         <div>
                             <h4 className="font-bold text-emerald-900">Performance de Promoções</h4>
-                            <p className="text-xs text-emerald-600">Vendas de itens em oferta</p>
+                            <p className="text-xs text-emerald-600">Vendas de itens em oferta ativa</p>
                         </div>
                     </div>
                     <div className="text-right">
@@ -1003,7 +1031,7 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
                 {/* Flow Chart */}
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-64">
                     <h3 className="text-sm font-bold text-gray-500 uppercase mb-4">Fluxo de Resultado</h3>
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                         <BarChart data={[
                             { name: 'Rec. Bruta', value: grossRevenue, fill: '#10b981' },
                             { name: 'Custo (CMV)', value: totalCMV, fill: '#ef4444' },
@@ -1064,18 +1092,22 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
         console.log('Gross Profit:', grossProfit);
 
         // 6. Despesas Operacionais (Operating Expenses)
-        const operatingExpenses = transactions
-            .filter(t =>
-                t.type === 'EXPENSE' &&
-                t.status === 'PAID' &&
-                t.date.substring(0, 10) >= startDate && t.date.substring(0, 10) <= endDate &&
-                !t.category.includes('Devolução') &&
-                !t.category.includes('Estorno') &&
-                !t.category.includes('Reembolso') &&
-                !t.category.includes('Fornecedores (Estoque)')
-            )
-            .reduce((acc, t) => acc + t.amount, 0);
-        console.log('Operating Expenses:', operatingExpenses);
+        const expenseTransactions = transactions.filter(t =>
+            t.type === 'EXPENSE' &&
+            t.status === 'PAID' &&
+            t.date.substring(0, 10) >= startDate && t.date.substring(0, 10) <= endDate &&
+            !t.category.includes('Devolução') &&
+            !t.category.includes('Estorno') &&
+            !t.category.includes('Reembolso') &&
+            !t.category.includes('Fornecedores (Estoque)')
+        );
+        const operatingExpenses = expenseTransactions.reduce((acc, t) => acc + t.amount, 0);
+
+        console.log('Operating Expenses DEBUG:');
+        console.log('- Total transactions:', transactions.length);
+        console.log('- Filtered expense transactions:', expenseTransactions.length);
+        console.log('- Expense transactions:', expenseTransactions);
+        console.log('- Operating Expenses Total:', operatingExpenses);
 
         // 7. Despesas Financeiras (Card Fees)
         const savedRates = localStorage.getItem('mm_terminal_rates');
@@ -1089,13 +1121,37 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
             avgCredit = rateKeys.reduce((acc, k) => acc + (terminalRates[k].credit || 0), 0) / rateKeys.length;
             avgPix = rateKeys.reduce((acc, k) => acc + (terminalRates[k].pix || 0), 0) / rateKeys.length;
         }
+
+        console.log('Card Fees DEBUG:');
+        console.log('- Terminal Rates:', terminalRates);
+        console.log('- Avg Debit Rate:', avgDebit + '%');
+        console.log('- Avg Credit Rate:', avgCredit + '%');
+        console.log('- Avg Pix Rate:', avgPix + '%');
+
+        const paymentMethodBreakdown: any = {};
+        filteredSales.forEach(s => {
+            if (!paymentMethodBreakdown[s.paymentMethod]) {
+                paymentMethodBreakdown[s.paymentMethod] = { count: 0, total: 0, fees: 0 };
+            }
+            paymentMethodBreakdown[s.paymentMethod].count++;
+            paymentMethodBreakdown[s.paymentMethod].total += s.total;
+        });
+
         const totalFees = filteredSales.reduce((acc, s) => {
-            if (s.paymentMethod === 'CREDIT') return acc + (s.total * (avgCredit / 100));
-            if (s.paymentMethod === 'DEBIT') return acc + (s.total * (avgDebit / 100));
-            if (s.paymentMethod === 'PIX') return acc + (s.total * (avgPix / 100));
-            return acc;
+            let fee = 0;
+            if (s.paymentMethod === 'CREDIT') fee = s.total * (avgCredit / 100);
+            if (s.paymentMethod === 'DEBIT') fee = s.total * (avgDebit / 100);
+            if (s.paymentMethod === 'PIX') fee = s.total * (avgPix / 100);
+
+            if (paymentMethodBreakdown[s.paymentMethod]) {
+                paymentMethodBreakdown[s.paymentMethod].fees += fee;
+            }
+
+            return acc + fee;
         }, 0);
-        console.log('Total Fees:', totalFees);
+
+        console.log('- Payment Method Breakdown:', paymentMethodBreakdown);
+        console.log('- Total Fees:', totalFees);
 
         // 8. Resultado Líquido (Net Result)
         const netResult = grossProfit - operatingExpenses - totalFees;
@@ -1111,7 +1167,7 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
                     <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-6 text-white flex justify-between items-center">
                         <div>
                             <h3 className="text-xl font-bold">Demonstrativo do Resultado do Exercício (D.R.E)</h3>
-                            <p className="text-emerald-50 text-sm opacity-90">Período: {new Date(startDate).toLocaleDateString('pt-BR')} a {new Date(endDate).toLocaleDateString('pt-BR')}</p>
+                            <p className="text-emerald-50 text-sm opacity-90">Período: {startDate.split('-').reverse().join('/')} a {endDate.split('-').reverse().join('/')}</p>
                         </div>
                         <div className="flex gap-2">
                             <button onClick={() => handleDownload('PDF')} className="p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors" title="Baixar PDF">
@@ -1213,7 +1269,7 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-80">
                         <h3 className="text-lg font-bold text-gray-800 mb-4">Distribuição por Método</h3>
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                             <PieChart>
                                 <Pie
                                     data={salesByMethod}
@@ -1324,7 +1380,7 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
                 {/* Pareto Chart */}
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-80">
                     <h3 className="text-lg font-bold text-gray-800 mb-4">Gráfico de Pareto (Top 20 Produtos)</h3>
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                         <ComposedChart data={abcData.slice(0, 20)}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} />
                             <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} fontSize={10} interval={0} />
@@ -1972,7 +2028,9 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
                                             {t.status === 'PAID' ? 'Pago' : 'Pendente'}
                                         </span>
                                     </td>
-                                    <td className="p-4 text-center text-gray-500">{t.dueDate ? new Date(t.dueDate).toLocaleDateString('pt-BR') : '-'}</td>
+                                    <td className="p-4 text-center text-gray-500">
+                                        {t.dueDate ? t.dueDate.split('T')[0].split('-').reverse().join('/') : '-'}
+                                    </td>
                                     <td className="p-4 text-center">
                                         {t.items && t.items.length > 0 && (
                                             <button
@@ -2128,6 +2186,7 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
                 <div className="flex-1 overflow-y-auto pr-2 pb-10">
                     {currentView === 'SALES_PERIOD' && renderSalesPeriod()}
                     {currentView === 'SALES_COSTS' && renderSalesCosts()}
+                    {currentView === 'DRE' && renderDRE()}
                     {currentView === 'PAYMENT_METHODS' && renderPaymentMethods()}
                     {currentView === 'PRODUCT_GROUPS' && renderGenericGroupReport('category')}
                     {currentView === 'BRANDS' && renderGenericGroupReport('brand')}

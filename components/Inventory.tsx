@@ -597,37 +597,37 @@ const Inventory: React.FC<InventoryProps> = ({ products, stockMovements, onAddPr
                 <div className="flex flex-wrap gap-2">
                     <button
                         onClick={() => openAdjustment()}
-                        className="bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-orange-700 transition-colors shadow-sm"
+                        className="bg-emerald-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-700 transition-colors shadow-sm"
                     >
                         <ArrowLeftRight size={18} /> Ajuste Rápido / Inventário
                     </button>
                     <button
                         onClick={() => setIsHistoryModalOpen(true)}
-                        className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700 transition-colors shadow-sm"
+                        className="bg-emerald-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-700 transition-colors shadow-sm"
                     >
                         <History size={18} /> Movimentações
                     </button>
                     <button
                         onClick={() => setIsExpiryModalOpen(true)}
-                        className="bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-red-700 transition-colors shadow-sm"
+                        className="bg-emerald-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-700 transition-colors shadow-sm"
                     >
                         <AlertTriangle size={18} /> Validades
                     </button>
                     <button
                         onClick={() => onNavigate && onNavigate('peps')}
-                        className="bg-amber-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-amber-700 transition-colors shadow-sm"
+                        className="bg-emerald-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-700 transition-colors shadow-sm"
                     >
                         <Layers size={18} /> Lotes PEPS
                     </button>
                     <button
                         onClick={() => setIsAuxModalOpen(true)}
-                        className="bg-slate-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-slate-700 transition-colors shadow-sm"
+                        className="bg-emerald-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-700 transition-colors shadow-sm"
                     >
                         <Tags size={18} /> Cadastros Auxiliares
                     </button>
                     <button
                         onClick={() => setIsImportModalOpen(true)}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition-colors shadow-sm"
+                        className="bg-emerald-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-700 transition-colors shadow-sm"
                     >
                         <Upload size={18} /> Importar Produtos
                     </button>
@@ -1126,6 +1126,17 @@ const Inventory: React.FC<InventoryProps> = ({ products, stockMovements, onAddPr
                                     value={formData.code} onChange={e => setFormData({ ...formData, code: e.target.value })} />
                             </div>
                             <div>
+                                <label className="block text-sm font-medium text-gray-700">Unidade de Medida</label>
+                                <select className="w-full border p-2 rounded focus:ring-emerald-500 focus:outline-none bg-white"
+                                    value={formData.unit} onChange={e => setFormData({ ...formData, unit: e.target.value })}>
+                                    <option value="UN">UN (Unidade)</option>
+                                    <option value="KG">KG (Quilograma)</option>
+                                    <option value="L">L (Litro)</option>
+                                    <option value="CX">CX (Caixa)</option>
+                                    <option value="PCT">PCT (Pacote)</option>
+                                </select>
+                            </div>
+                            <div>
                                 <label className="block text-sm font-medium text-gray-700">Categoria</label>
                                 <select className="w-full border p-2 rounded focus:ring-emerald-500 focus:outline-none bg-white"
                                     value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })}>
@@ -1146,7 +1157,7 @@ const Inventory: React.FC<InventoryProps> = ({ products, stockMovements, onAddPr
                             </div>
 
                             {/* Brand & Supplier Fields */}
-                            <div>
+                            <div className="col-span-2">
                                 <label className="block text-sm font-medium text-gray-700">Marca</label>
                                 <input type="text" list="brands-list" className="w-full border p-2 rounded focus:ring-emerald-500 focus:outline-none"
                                     placeholder="Ex: Coca-Cola"
