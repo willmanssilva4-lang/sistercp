@@ -29,6 +29,15 @@ interface ProfitData {
     marginPercent: number;
 }
 
+interface GroupedProfitData {
+    period: string; // Day, Month or Year string
+    revenue: number;
+    cost: number;
+    profit: number;
+    tax: number; // Estimated tax
+    netProfit: number;
+}
+
 interface ProfitMarginReportsProps {
     products: Product[];
     sales: Sale[];
@@ -55,14 +64,17 @@ export default function ProfitMarginReports({ products, sales }: ProfitMarginRep
         totalProfit: 0,
         averageMargin: 0
     });
+    const [grouping, setGrouping] = useState<'day' | 'month' | 'year'>('day');
+    const [groupedData, setGroupedData] = useState<GroupedProfitData[]>([]);
 
     // Default dates initialized in state
 
     useEffect(() => {
         if (startDate && endDate) {
             calculateProfitMargins();
+            calculateGroupedData();
         }
-    }, [startDate, endDate, selectedCategory, products, sales]);
+    }, [startDate, endDate, selectedCategory, products, sales, grouping]);
 
     const calculateProfitMargins = () => {
         const start = new Date(startDate);
@@ -128,6 +140,78 @@ export default function ProfitMarginReports({ products, sales }: ProfitMarginRep
             totalProfit,
             averageMargin
         });
+    };
+
+    const calculateGroupedData = () => {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+
+        const filteredSales = sales.filter(sale => {
+            const saleDate = new Date(sale.timestamp);
+            return saleDate >= start && saleDate <= end;
+        });
+
+        const groupedMap = new Map<string, GroupedProfitData>();
+
+        filteredSales.forEach(sale => {
+            const date = new Date(sale.timestamp);
+            let key = '';
+
+            if (grouping === 'day') {
+                key = date.toLocaleDateString('pt-BR');
+            } else if (grouping === 'month') {
+                key = `${date.getMonth() + 1}/${date.getFullYear()}`;
+            } else {
+                key = `${date.getFullYear()}`;
+            }
+
+            if (!groupedMap.has(key)) {
+                groupedMap.set(key, { period: key, revenue: 0, cost: 0, profit: 0, tax: 0, netProfit: 0 });
+            }
+
+            const group = groupedMap.get(key)!;
+
+            // Calculate totals for this sale
+            let saleRevenue = 0;
+            let saleCost = 0;
+
+            sale.items.forEach(item => {
+                const product = products.find(p => p.code === item.code);
+                if (product && (selectedCategory === 'all' || product.category === selectedCategory)) {
+                    saleRevenue += item.subtotal;
+                    saleCost += (product.costPrice * item.qty);
+                }
+            });
+
+            // Only add if there was revenue (matches category filter)
+            if (saleRevenue > 0) {
+                group.revenue += saleRevenue;
+                group.cost += saleCost;
+            }
+        });
+
+        // Finalize calculations (Profit, Tax, Net)
+        // Assuming a simple tax rate for estimation, e.g., 6% Simples Nacional (Configurable later?)
+        const TAX_RATE = 0.06;
+
+        const result = Array.from(groupedMap.values()).map(g => {
+            g.profit = g.revenue - g.cost;
+            g.tax = g.revenue * TAX_RATE;
+            g.netProfit = g.profit - g.tax;
+            return g;
+        });
+
+        // Sort by date/period
+        if (grouping === 'day') {
+            result.sort((a, b) => {
+                const [da, ma, ya] = a.period.split('/').map(Number);
+                const [db, mb, yb] = b.period.split('/').map(Number);
+                return new Date(ya, ma - 1, da).getTime() - new Date(yb, mb - 1, db).getTime();
+            });
+        }
+
+        setGroupedData(result);
     };
 
     const categories = ['all', ...new Set(products.map(p => p.category))];
@@ -300,6 +384,49 @@ export default function ProfitMarginReports({ products, sales }: ProfitMarginRep
                             ))}
                         </tbody>
                     </table>
+                </div>
+            </div>
+
+            {/* Grouped Data Table */}
+            <div className="mt-8">
+                <h2 className="text-xl font-bold text-gray-800 mb-4">Detalhamento por Período ({grouping === 'day' ? 'Dia' : grouping === 'month' ? 'Mês' : 'Ano'})</h2>
+                <div className="bg-white rounded-lg shadow overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="w-full min-w-[800px]">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Período</th>
+                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Receita Bruta</th>
+                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Custo Produtos</th>
+                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Lucro Bruto</th>
+                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Impostos (Est. 6%)</th>
+                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Lucro Líquido</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200">
+                                {groupedData.map((item) => (
+                                    <tr key={item.period} className="hover:bg-gray-50">
+                                        <td className="px-4 py-3 text-sm font-bold text-gray-800">{item.period}</td>
+                                        <td className="px-4 py-3 text-sm text-right font-medium text-blue-600">{formatCurrency(item.revenue)}</td>
+                                        <td className="px-4 py-3 text-sm text-right text-orange-600">{formatCurrency(item.cost)}</td>
+                                        <td className="px-4 py-3 text-sm text-right font-medium text-green-600">{formatCurrency(item.profit)}</td>
+                                        <td className="px-4 py-3 text-sm text-right text-red-500">-{formatCurrency(item.tax)}</td>
+                                        <td className="px-4 py-3 text-sm text-right font-bold text-emerald-700 bg-emerald-50">{formatCurrency(item.netProfit)}</td>
+                                    </tr>
+                                ))}
+                                {groupedData.length > 0 && (
+                                    <tr className="bg-gray-100 font-bold">
+                                        <td className="px-4 py-3 text-sm">TOTAL</td>
+                                        <td className="px-4 py-3 text-sm text-right text-blue-800">{formatCurrency(groupedData.reduce((a, b) => a + b.revenue, 0))}</td>
+                                        <td className="px-4 py-3 text-sm text-right text-orange-800">{formatCurrency(groupedData.reduce((a, b) => a + b.cost, 0))}</td>
+                                        <td className="px-4 py-3 text-sm text-right text-green-800">{formatCurrency(groupedData.reduce((a, b) => a + b.profit, 0))}</td>
+                                        <td className="px-4 py-3 text-sm text-right text-red-800">-{formatCurrency(groupedData.reduce((a, b) => a + b.tax, 0))}</td>
+                                        <td className="px-4 py-3 text-sm text-right text-emerald-900">{formatCurrency(groupedData.reduce((a, b) => a + b.netProfit, 0))}</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>

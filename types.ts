@@ -104,6 +104,7 @@ export interface ProductKit {
   name: string;
   code: string; // Virtual barcode for the kit
   price: number;
+  unit?: string;
   items: { productCode: string; qty: number }[];
   active: boolean;
 }

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Product, Transaction, User } from '../types';
-import { Search, Plus, Trash2, ShoppingCart, Truck, Package, Calendar, DollarSign, Save, X, CheckCircle, CreditCard, ArrowLeftCircle, TrendingUp } from 'lucide-react';
+import { Search, Plus, Trash2, ShoppingCart, Truck, Package, Calendar, DollarSign, Save, X, CheckCircle, CreditCard, ArrowLeftCircle, TrendingUp, ChevronRight, ChevronLeft, FileText } from 'lucide-react';
 import PurchaseSuggestion from './PurchaseSuggestion';
 
 interface PurchasesProps {
@@ -18,7 +18,10 @@ interface PurchasesProps {
 interface PurchaseItem extends Product {
     qty: number;
     subtotal: number;
+    qty: number;
+    subtotal: number;
     expiryDate?: string;
+    totalVolume?: string;
 }
 
 const Purchases: React.FC<PurchasesProps> = ({ products, currentUser, onProcessPurchase, transactions, onCancelPurchase, onBack, suppliersList: propSuppliersList }) => {
@@ -44,11 +47,15 @@ const Purchases: React.FC<PurchasesProps> = ({ products, currentUser, onProcessP
     const [installmentInterval, setInstallmentInterval] = useState(30);
     const [entryType, setEntryType] = useState<'PURCHASE' | 'DONATION' | 'BONUS' | 'ADJUSTMENT'>('PURCHASE');
 
+    // Wizard Step State
+    const [currentStep, setCurrentStep] = useState(1);
+
     // Pricing Mode: MARGIN vs MARKUP
     const [pricingMode, setPricingMode] = useState<'MARGIN' | 'MARKUP'>('MARGIN');
 
     // Carregar fornecedores do localStorage
     const [suppliersList, setSuppliersList] = useState<string[]>([]);
+    const [showSupplierList, setShowSupplierList] = useState(false);
 
     // Carregar Margens e Markups Personalizadas
     const [categoryMargins, setCategoryMargins] = useState<Record<string, number>>({});
@@ -129,7 +136,10 @@ const Purchases: React.FC<PurchasesProps> = ({ products, currentUser, onProcessP
             const newItem: PurchaseItem = {
                 ...product,
                 qty: 1,
-                subtotal: product.costPrice
+                ...product,
+                qty: 1,
+                subtotal: product.costPrice,
+                totalVolume: ''
             };
             setCart([...cart, newItem]);
         }
@@ -179,6 +189,15 @@ const Purchases: React.FC<PurchasesProps> = ({ products, currentUser, onProcessP
         setCart(prev => prev.map((item, i) => {
             if (i === index) {
                 return { ...item, expiryDate: newDate };
+            }
+            return item;
+        }));
+    };
+
+    const updateTotalVolume = (index: number, newVolume: string) => {
+        setCart(prev => prev.map((item, i) => {
+            if (i === index) {
+                return { ...item, totalVolume: newVolume };
             }
             return item;
         }));
@@ -243,6 +262,7 @@ const Purchases: React.FC<PurchasesProps> = ({ products, currentUser, onProcessP
             setInstallments(1);
             setInstallmentInterval(30);
             setEntryType('PURCHASE');
+            setCurrentStep(1);
 
             // Show success modal
             setShowSuccessModal(true);
@@ -325,91 +345,289 @@ const Purchases: React.FC<PurchasesProps> = ({ products, currentUser, onProcessP
             </div>
 
             {activeTab === 'NEW_PURCHASE' ? (
-                <div className="flex flex-col md:flex-row gap-6 h-full overflow-hidden relative">
-                    {/* LEFT: Product Selection */}
-                    <div className={`w-full md:w-1/2 flex flex-col gap-4 h-full ${mobileView === 'SEARCH' ? 'flex' : 'hidden md:flex'}`}>
-                        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 relative z-20">
-                            <h3 className="font-bold text-gray-700 mb-4 flex items-center gap-2">
-                                <Search size={20} className="text-emerald-500" /> Buscar Produtos
-                            </h3>
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    placeholder="Digite nome ou código de barras..."
-                                    className="w-full border p-3 pl-10 rounded-lg focus:ring-emerald-500 focus:outline-none bg-gray-50"
-                                    value={searchTerm}
-                                    onChange={e => setSearchTerm(e.target.value)}
-                                    autoFocus
-                                />
-                                <Search className="absolute left-3 top-3.5 text-gray-400" size={18} />
-
-                                {filteredProducts.length > 0 && (
-                                    <div className="absolute top-full left-0 w-full mt-1 border rounded-lg max-h-60 overflow-y-auto bg-white shadow-xl z-50">
-                                        {filteredProducts.map(p => (
-                                            <div
-                                                key={p.id}
-                                                onClick={() => addToCart(p)}
-                                                className="p-3 border-b hover:bg-emerald-50 cursor-pointer flex justify-between items-center"
-                                            >
-                                                <div>
-                                                    <p className="font-bold text-gray-800">{p.name}</p>
-                                                    <p className="text-xs text-gray-500">{p.code}</p>
-                                                </div>
-                                                <div className="text-right">
-                                                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold block mb-1 ${p.stock <= p.minStock ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
-                                                        Estoque: {p.stock}
-                                                    </span>
-                                                    <p className="text-xs text-gray-400">Custo Atual</p>
-                                                    <p className="font-bold text-gray-700">R$ {p.costPrice.toFixed(3)}</p>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
+                <div className="flex flex-col h-full overflow-hidden relative bg-white rounded-xl shadow-sm border border-gray-100">
+                    {/* Stepper Header */}
+                    <div className="p-6 border-b border-gray-100">
+                        <div className="flex items-center justify-center">
+                            <div className={`flex items-center gap-2 ${currentStep >= 1 ? 'text-emerald-600 font-bold' : 'text-gray-400'}`}>
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${currentStep >= 1 ? 'border-emerald-600 bg-emerald-50' : 'border-gray-300'}`}>1</div>
+                                <span className="hidden sm:inline">Fornecedor</span>
+                            </div>
+                            <div className={`w-8 sm:w-16 h-0.5 mx-2 ${currentStep >= 2 ? 'bg-emerald-600' : 'bg-gray-300'}`} />
+                            <div className={`flex items-center gap-2 ${currentStep >= 2 ? 'text-emerald-600 font-bold' : 'text-gray-400'}`}>
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${currentStep >= 2 ? 'border-emerald-600 bg-emerald-50' : 'border-gray-300'}`}>2</div>
+                                <span className="hidden sm:inline">Produtos</span>
+                            </div>
+                            <div className={`w-8 sm:w-16 h-0.5 mx-2 ${currentStep >= 3 ? 'bg-emerald-600' : 'bg-gray-300'}`} />
+                            <div className={`flex items-center gap-2 ${currentStep >= 3 ? 'text-emerald-600 font-bold' : 'text-gray-400'}`}>
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${currentStep >= 3 ? 'border-emerald-600 bg-emerald-50' : 'border-gray-300'}`}>3</div>
+                                <span className="hidden sm:inline">Pagamento</span>
                             </div>
                         </div>
+                    </div>
 
-                        {/* Purchase Form Details */}
-                        <form id="purchase-form" onSubmit={handleFinalize} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex-1 overflow-y-auto">
-                            <h3 className="font-bold text-gray-700 mb-4 flex items-center gap-2">
-                                <Truck size={20} className="text-blue-500" /> Dados da Nota Fiscal
-                            </h3>
+                    {/* Step Content */}
+                    <div className="flex-1 overflow-y-auto p-6">
+                        {currentStep === 1 && (
+                            <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
+                                <h3 className="font-bold text-xl text-gray-800 flex items-center gap-2 mb-6">
+                                    <Truck className="text-emerald-600" /> Dados do Fornecedor e Nota
+                                </h3>
 
-                            <div className="space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Fornecedor</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Fornecedor</label>
                                     <div className="relative">
                                         <input
-                                            list="suppliers-datalist"
                                             type="text"
                                             required
-                                            className="w-full border p-2.5 pl-10 rounded-lg focus:ring-emerald-500 focus:outline-none"
-                                            placeholder="Digite 3 letras para buscar..."
+                                            className="w-full border p-3 pl-10 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                                            placeholder="Digite o nome do fornecedor..."
                                             value={supplier}
-                                            onChange={e => setSupplier(e.target.value)}
+                                            onChange={e => {
+                                                setSupplier(e.target.value);
+                                                setShowSupplierList(true);
+                                            }}
+                                            onFocus={() => setShowSupplierList(true)}
+                                            onBlur={() => setTimeout(() => setShowSupplierList(false), 200)}
+                                            autoFocus
                                         />
-                                        <Truck className="absolute left-3 top-3 text-gray-400" size={16} />
-                                        <datalist id="suppliers-datalist">
-                                            {supplier.length >= 3 && suppliersList.map(s => <option key={s} value={s} />)}
-                                        </datalist>
+                                        <Truck className="absolute left-3 top-3.5 text-gray-400" size={18} />
+
+                                        {showSupplierList && supplier.length >= 1 && (
+                                            <div className="absolute top-full left-0 w-full bg-white border border-gray-200 rounded-xl shadow-lg mt-1 max-h-48 overflow-y-auto z-50 animate-fade-in">
+                                                {suppliersList.filter(s => s.toLowerCase().includes(supplier.toLowerCase())).length > 0 ? (
+                                                    suppliersList.filter(s => s.toLowerCase().includes(supplier.toLowerCase())).map(s => (
+                                                        <div
+                                                            key={s}
+                                                            className="p-3 hover:bg-emerald-50 cursor-pointer text-gray-700 border-b border-gray-50 last:border-0"
+                                                            onClick={() => {
+                                                                setSupplier(s);
+                                                                setShowSupplierList(false);
+                                                            }}
+                                                        >
+                                                            {s}
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <div className="p-3 text-gray-400 text-sm italic">Nenhum fornecedor encontrado</div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Nº Nota / Pedido</label>
-                                        <input
-                                            type="text"
-                                            className="w-full border p-2.5 rounded-lg focus:ring-emerald-500 focus:outline-none"
-                                            placeholder="Ex: 12345"
-                                            value={invoiceNumber}
-                                            onChange={e => setInvoiceNumber(e.target.value)}
-                                        />
+                                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Nº Nota / Pedido</label>
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                className="w-full border p-3 pl-10 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                                                placeholder="Ex: 12345"
+                                                value={invoiceNumber}
+                                                onChange={e => setInvoiceNumber(e.target.value)}
+                                            />
+                                            <FileText className="absolute left-3 top-3.5 text-gray-400" size={18} />
+                                        </div>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Status Pagamento</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Tipo de Entrada</label>
                                         <select
-                                            className="w-full border p-2.5 rounded-lg focus:ring-emerald-500 focus:outline-none bg-white"
+                                            className="w-full border p-3 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white"
+                                            value={entryType}
+                                            onChange={e => setEntryType(e.target.value as any)}
+                                        >
+                                            <option value="PURCHASE">Compra (Gera Financeiro)</option>
+                                            <option value="DONATION">Doação (Sem Financeiro)</option>
+                                            <option value="BONUS">Bonificação (Sem Financeiro)</option>
+                                            <option value="ADJUSTMENT">Ajuste de Estoque (Sem Financeiro)</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Data de Emissão</label>
+                                    <div className="relative">
+                                        <input
+                                            type="date"
+                                            required
+                                            className="w-full border p-3 pl-10 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                                            value={purchaseDate}
+                                            onChange={e => setPurchaseDate(e.target.value)}
+                                        />
+                                        <Calendar className="absolute left-3 top-3.5 text-gray-400" size={18} />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {currentStep === 2 && (
+                            <div className="flex flex-col h-full gap-6 animate-fade-in">
+                                {/* Search Area */}
+                                <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            placeholder="Buscar produtos por nome ou código de barras..."
+                                            className="w-full border p-3 pl-10 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all shadow-sm"
+                                            value={searchTerm}
+                                            onChange={e => setSearchTerm(e.target.value)}
+                                            autoFocus
+                                        />
+                                        <Search className="absolute left-3 top-3.5 text-gray-400" size={18} />
+
+                                        {filteredProducts.length > 0 && (
+                                            <div className="absolute top-full left-0 w-full mt-2 border border-gray-100 rounded-xl max-h-60 overflow-y-auto bg-white shadow-xl z-50">
+                                                {filteredProducts.map(p => (
+                                                    <div
+                                                        key={p.id}
+                                                        onClick={() => addToCart(p)}
+                                                        className="p-3 border-b border-gray-50 hover:bg-emerald-50 cursor-pointer flex justify-between items-center transition-colors group"
+                                                    >
+                                                        <div>
+                                                            <p className="font-bold text-gray-800 group-hover:text-emerald-700">{p.name}</p>
+                                                            <p className="text-xs text-gray-500">{p.code}</p>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold block mb-1 w-fit ml-auto ${p.stock <= p.minStock ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
+                                                                Estoque: {p.stock}
+                                                            </span>
+                                                            <p className="text-xs text-gray-400">Custo Atual</p>
+                                                            <p className="font-bold text-gray-700">R$ {p.costPrice.toFixed(3)}</p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Cart Table */}
+                                <div className="flex-1 overflow-hidden flex flex-col border border-gray-200 rounded-xl">
+                                    <div className="bg-slate-800 text-white p-3 flex justify-between items-center">
+                                        <h3 className="font-bold flex items-center gap-2"><ShoppingCart size={18} className="text-emerald-400" /> Carrinho de Compras</h3>
+                                        <span className="text-xs bg-slate-700 px-2 py-1 rounded-full">{cart.length} itens</span>
+                                    </div>
+                                    <div className="flex-1 overflow-y-auto">
+                                        {cart.length === 0 ? (
+                                            <div className="h-full flex flex-col items-center justify-center text-gray-400 p-8">
+                                                <Package size={48} className="mb-4 opacity-20" />
+                                                <p className="text-lg font-medium">Carrinho vazio</p>
+                                                <p className="text-sm">Busque produtos acima para adicionar</p>
+                                            </div>
+                                        ) : (
+                                            <table className="w-full text-left text-sm">
+                                                <thead className="bg-gray-50 text-gray-500 border-b sticky top-0 z-10">
+                                                    <tr>
+                                                        <th className="p-3 w-24 text-center">Qtd</th>
+                                                        <th className="p-3">Produto</th>
+                                                        <th className="p-3 w-28 text-right">Custo (R$)</th>
+                                                        <th className="p-3 w-28 text-right">Total</th>
+                                                        <th className="p-3 w-24 text-center">Vol. Total</th>
+                                                        <th className="p-3 w-32 text-center">Validade</th>
+                                                        <th className="p-3 w-32 text-right">Venda (R$)</th>
+                                                        <th className="p-3 w-10"></th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-100">
+                                                    {cart.map((item, idx) => {
+                                                        const suggestedPrice = calculateSuggestedPrice(item.costPrice, item.category);
+                                                        return (
+                                                            <tr key={idx} className="hover:bg-gray-50 group">
+                                                                <td className="p-2">
+                                                                    <input
+                                                                        type="number" min="1"
+                                                                        className="w-full border rounded-lg p-1.5 text-center font-bold outline-none focus:ring-2 focus:ring-emerald-500"
+                                                                        value={item.qty}
+                                                                        onChange={e => updateQty(idx, parseInt(e.target.value))}
+                                                                    />
+                                                                </td>
+                                                                <td className="p-2">
+                                                                    <div className="font-bold text-gray-700">{item.name}</div>
+                                                                    <div className="text-xs text-gray-400">{item.code}</div>
+                                                                </td>
+                                                                <td className="p-2">
+                                                                    <input
+                                                                        type="text"
+                                                                        className="w-full border rounded-lg p-1.5 text-right outline-none focus:ring-2 focus:ring-emerald-500"
+                                                                        value={item.costPrice.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
+                                                                        onChange={e => handleCostInput(idx, e.target.value)}
+                                                                    />
+                                                                </td>
+                                                                <td className="p-2 text-right font-bold text-gray-700">
+                                                                    R$ {item.subtotal.toFixed(2)}
+                                                                </td>
+                                                                <td className="p-2">
+                                                                    <input
+                                                                        type="text"
+                                                                        className="w-full border rounded-lg p-1.5 text-center text-xs outline-none focus:ring-2 focus:ring-blue-500"
+                                                                        placeholder="Ex: 2L"
+                                                                        value={item.totalVolume || ''}
+                                                                        onChange={e => updateTotalVolume(idx, e.target.value)}
+                                                                    />
+                                                                </td>
+                                                                <td className="p-2">
+                                                                    <input
+                                                                        type="date"
+                                                                        className="w-full border rounded-lg p-1.5 text-center text-xs outline-none focus:ring-2 focus:ring-blue-500"
+                                                                        value={item.expiryDate || ''}
+                                                                        onChange={e => updateExpiryDate(idx, e.target.value)}
+                                                                    />
+                                                                </td>
+                                                                <td className="p-2">
+                                                                    <div className="flex flex-col items-end">
+                                                                        <input
+                                                                            type="number" step="0.01" min="0"
+                                                                            className="w-full border rounded-lg p-1.5 text-right font-medium text-emerald-600 outline-none focus:ring-2 focus:ring-emerald-500"
+                                                                            value={item.retailPrice}
+                                                                            onChange={e => updateRetail(idx, parseFloat(e.target.value))}
+                                                                        />
+                                                                        <span
+                                                                            onClick={() => updateRetail(idx, parseFloat(suggestedPrice.toFixed(2)))}
+                                                                            className="text-[10px] cursor-pointer hover:underline text-right mt-1 text-emerald-500"
+                                                                            title="Aplicar preço sugerido"
+                                                                        >
+                                                                            Sug: R$ {suggestedPrice.toFixed(2)}
+                                                                        </span>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="p-2 text-center">
+                                                                    <button onClick={() => removeFromCart(idx)} className="text-red-300 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors">
+                                                                        <Trash2 size={16} />
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        )}
+                                    </div>
+                                    <div className="bg-gray-50 p-4 border-t border-gray-200 flex justify-between items-center">
+                                        <span className="text-gray-500 font-medium">Total Parcial</span>
+                                        <span className="text-2xl font-bold text-gray-800">R$ {totalPurchase.toFixed(2)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {currentStep === 3 && (
+                            <div className="max-w-2xl mx-auto space-y-8 animate-fade-in">
+                                <h3 className="font-bold text-xl text-gray-800 flex items-center gap-2 mb-6">
+                                    <CreditCard className="text-emerald-600" /> Pagamento e Finalização
+                                </h3>
+
+                                <div className="bg-emerald-50 p-6 rounded-2xl border border-emerald-100 flex flex-col items-center justify-center text-center">
+                                    <span className="text-emerald-600 font-medium uppercase tracking-wider text-sm mb-2">Valor Total da Compra</span>
+                                    <span className="text-4xl font-bold text-emerald-700">R$ {totalPurchase.toFixed(2)}</span>
+                                    <span className="text-emerald-600/70 text-sm mt-2">{cart.length} itens</span>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Status do Pagamento</label>
+                                        <select
+                                            className="w-full border p-3 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white"
                                             value={paymentStatus}
                                             onChange={e => setPaymentStatus(e.target.value as any)}
                                         >
@@ -417,228 +635,97 @@ const Purchases: React.FC<PurchasesProps> = ({ products, currentUser, onProcessP
                                             <option value="PENDING">A Prazo (Pendente)</option>
                                         </select>
                                     </div>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Entrada</label>
-                                    <select
-                                        className="w-full border p-2.5 rounded-lg focus:ring-emerald-500 focus:outline-none bg-white"
-                                        value={entryType}
-                                        onChange={e => setEntryType(e.target.value as any)}
-                                    >
-                                        <option value="PURCHASE">Compra (Gera Financeiro)</option>
-                                        <option value="DONATION">Doação (Sem Financeiro)</option>
-                                        <option value="BONUS">Bonificação (Sem Financeiro)</option>
-                                        <option value="ADJUSTMENT">Ajuste de Estoque (Sem Financeiro)</option>
-                                    </select>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Data Emissão</label>
-                                        <div className="relative">
-                                            <input
-                                                type="date"
-                                                required
-                                                className="w-full border p-2.5 pl-10 rounded-lg focus:ring-emerald-500 focus:outline-none"
-                                                value={purchaseDate}
-                                                onChange={e => setPurchaseDate(e.target.value)}
-                                            />
-                                            <Calendar className="absolute left-3 top-3 text-gray-400" size={16} />
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            {paymentStatus === 'PENDING' ? '1ª Parcela / Vencimento' : 'Data Pagamento'}
+                                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                            {paymentStatus === 'PENDING' ? '1ª Parcela / Vencimento' : 'Data do Pagamento'}
                                         </label>
                                         <div className="relative">
                                             <input
                                                 type="date"
                                                 required
-                                                className="w-full border p-2.5 pl-10 rounded-lg focus:ring-emerald-500 focus:outline-none"
+                                                className="w-full border p-3 pl-10 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
                                                 value={dueDate}
                                                 onChange={e => setDueDate(e.target.value)}
                                             />
-                                            <Calendar className="absolute left-3 top-3 text-gray-400" size={16} />
+                                            <Calendar className="absolute left-3 top-3.5 text-gray-400" size={18} />
                                         </div>
                                     </div>
                                 </div>
 
                                 {entryType === 'PURCHASE' && paymentStatus === 'PENDING' && (
-                                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                                        <label className="block text-sm font-bold text-blue-700 mb-2 flex items-center gap-2">
-                                            <CreditCard size={16} /> Parcelamento e Prazos
+                                    <div className="bg-blue-50 p-5 rounded-xl border border-blue-100">
+                                        <label className="block text-sm font-bold text-blue-800 mb-4 flex items-center gap-2">
+                                            <CreditCard size={18} /> Configuração de Parcelamento
                                         </label>
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex flex-col">
-                                                <span className="text-[10px] text-blue-600 font-bold uppercase mb-1">Qtd.</span>
+                                        <div className="flex items-end gap-4">
+                                            <div className="flex-1">
+                                                <span className="text-xs text-blue-600 font-bold uppercase mb-1.5 block">Qtd. Parcelas</span>
                                                 <input
                                                     type="number"
                                                     min="1"
                                                     max="48"
-                                                    className="w-20 border border-blue-200 p-2 rounded text-center font-bold"
+                                                    className="w-full border border-blue-200 p-2.5 rounded-lg text-center font-bold text-blue-800 focus:ring-2 focus:ring-blue-400 outline-none"
                                                     value={installments}
                                                     onChange={e => setInstallments(parseInt(e.target.value) || 1)}
                                                 />
                                             </div>
-                                            <div className="flex flex-col">
-                                                <span className="text-[10px] text-blue-600 font-bold uppercase mb-1">Dias (Intervalo)</span>
+                                            <div className="flex-1">
+                                                <span className="text-xs text-blue-600 font-bold uppercase mb-1.5 block">Intervalo (Dias)</span>
                                                 <input
                                                     type="number"
                                                     min="1"
-                                                    className="w-24 border border-blue-200 p-2 rounded text-center font-bold"
+                                                    className="w-full border border-blue-200 p-2.5 rounded-lg text-center font-bold text-blue-800 focus:ring-2 focus:ring-blue-400 outline-none"
                                                     placeholder="Ex: 30"
                                                     value={installmentInterval}
                                                     onChange={e => setInstallmentInterval(parseInt(e.target.value) || 30)}
                                                 />
                                             </div>
-                                            <span className="text-sm text-blue-600 font-bold mt-4">
-                                                x R$ {(totalPurchase / (installments || 1)).toFixed(2)}
-                                            </span>
                                         </div>
-                                        <p className="text-[10px] text-blue-500 mt-2">
-                                            O sistema lançará {installments} contas com intervalo de {installmentInterval} dias.
-                                        </p>
+                                        <div className="mt-4 pt-4 border-t border-blue-200 flex justify-between items-center text-blue-800">
+                                            <span className="text-sm">Valor da Parcela:</span>
+                                            <span className="font-bold text-lg">R$ {(totalPurchase / (installments || 1)).toFixed(2)}</span>
+                                        </div>
                                     </div>
                                 )}
                             </div>
-                        </form>
+                        )}
                     </div>
 
-                    {/* RIGHT: Cart Items */}
-                    <div className={`w-full md:w-1/2 flex flex-col bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden h-full ${mobileView === 'CART' ? 'flex' : 'hidden md:flex'}`}>
-                        <div className="p-4 bg-slate-800 text-white flex justify-between items-center">
-                            <h3 className="font-bold flex items-center gap-2"><ShoppingCart className="text-emerald-400" /> Itens da Compra</h3>
-                            <span className="text-sm bg-slate-700 px-2 py-1 rounded">{cart.length} itens</span>
-                        </div>
+                    {/* Footer Actions */}
+                    <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-between items-center">
+                        <button
+                            onClick={() => setCurrentStep(prev => Math.max(1, prev - 1))}
+                            disabled={currentStep === 1}
+                            className={`px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all ${currentStep === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 hover:bg-gray-200 bg-white border border-gray-200'}`}
+                        >
+                            <ChevronLeft size={20} /> Voltar
+                        </button>
 
-                        <div className="flex-1 overflow-y-auto p-2">
-                            {cart.length === 0 ? (
-                                <div className="h-full flex flex-col items-center justify-center text-gray-400">
-                                    <Package size={48} className="mb-2 opacity-50" />
-                                    <p>Nenhum produto adicionado.</p>
-                                </div>
-                            ) : (
-                                <table className="w-full text-left text-sm">
-                                    <thead className="bg-gray-50 text-gray-500 border-b sticky top-0">
-                                        <tr>
-                                            <th className="p-3 w-36 min-w-[100px] text-center">Qtd</th>
-                                            <th className="p-3 w-24 text-right">Custo (R$)</th>
-                                            <th className="p-3 text-right">Subtotal</th>
-                                            <th className="p-3 w-32 text-center">Validade</th>
-                                            <th className="p-3 w-36 text-right">
-                                                <div className="flex flex-col items-end gap-1">
-                                                    <span>Venda (R$)</span>
-                                                    <div className="flex bg-gray-200 rounded p-0.5 text-[9px] gap-0.5">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setPricingMode('MARGIN')}
-                                                            className={`px-1.5 py-0.5 rounded transition-all ${pricingMode === 'MARGIN' ? 'bg-white shadow text-emerald-700 font-bold' : 'text-gray-500 hover:text-gray-700'}`}
-                                                            title="Calcular por Margem sobre Venda"
-                                                        >
-                                                            Mg
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setPricingMode('MARKUP')}
-                                                            className={`px-1.5 py-0.5 rounded transition-all ${pricingMode === 'MARKUP' ? 'bg-white shadow text-purple-700 font-bold' : 'text-gray-500 hover:text-gray-700'}`}
-                                                            title="Calcular por Markup sobre Custo"
-                                                        >
-                                                            Mk
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </th>
-                                            <th className="p-3 w-10"></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100">
-                                        {cart.map((item, idx) => {
-                                            const suggestedPrice = calculateSuggestedPrice(item.costPrice, item.category);
-                                            const percentageUsed = getPercentageUsed(item.category);
-                                            return (
-                                                <React.Fragment key={idx}>
-                                                    <tr>
-                                                        <td colSpan={6} className="p-2 px-3 bg-gray-50 border-b border-gray-100">
-                                                            <div className="font-bold text-gray-700">{item.name}</div>
-                                                            <div className="text-xs text-gray-400">{item.code}</div>
-                                                        </td>
-                                                    </tr>
-                                                    <tr className="hover:bg-gray-50">
-                                                        <td className="p-3 align-middle">
-                                                            <input
-                                                                type="number" min="1"
-                                                                className="w-full border rounded p-1 text-center font-bold outline-none focus:ring-1 focus:ring-emerald-500"
-                                                                value={item.qty}
-                                                                onChange={e => updateQty(idx, parseInt(e.target.value))}
-                                                            />
-                                                        </td>
-                                                        <td className="p-3 align-middle">
-                                                            <input
-                                                                type="text"
-                                                                inputMode="numeric"
-                                                                className="w-full border rounded p-1 text-right outline-none focus:ring-1 focus:ring-emerald-500"
-                                                                value={item.costPrice.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
-                                                                onChange={e => handleCostInput(idx, e.target.value)}
-                                                            />
-                                                        </td>
-                                                        <td className="p-3 text-right font-bold text-gray-700 align-middle">
-                                                            R$ {item.subtotal.toFixed(2)}
-                                                        </td>
-                                                        <td className="p-3 align-middle">
-                                                            <input
-                                                                type="date"
-                                                                className="w-full border rounded p-1 text-center text-sm outline-none focus:ring-1 focus:ring-blue-500"
-                                                                value={item.expiryDate || ''}
-                                                                onChange={e => updateExpiryDate(idx, e.target.value)}
-                                                                placeholder="dd/mm/aaaa"
-                                                            />
-                                                        </td>
-                                                        <td className="p-3 align-middle">
-                                                            <div className="flex flex-col items-end">
-                                                                <input
-                                                                    type="number" step="0.01" min="0"
-                                                                    className="w-full border rounded p-1 text-right font-medium text-emerald-600 outline-none focus:ring-1 focus:ring-emerald-500"
-                                                                    value={item.retailPrice}
-                                                                    onChange={e => updateRetail(idx, parseFloat(e.target.value))}
-                                                                />
-                                                                <span
-                                                                    onClick={() => updateRetail(idx, parseFloat(suggestedPrice.toFixed(2)))}
-                                                                    className={`text-[10px] cursor-pointer hover:underline text-right mt-1 ${pricingMode === 'MARGIN' ? 'text-emerald-500' : 'text-purple-500'}`}
-                                                                    title={`Clique para aplicar sugestão`}
-                                                                >
-                                                                    Sug ({pricingMode === 'MARGIN' ? 'Mg' : 'Mk'} {percentageUsed}%): R$ {suggestedPrice.toFixed(2)}
-                                                                </span>
-                                                            </div>
-                                                        </td>
-                                                        <td className="p-3 text-center align-middle">
-                                                            <button onClick={() => removeFromCart(idx)} className="text-red-400 hover:text-red-600">
-                                                                <Trash2 size={16} />
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                </React.Fragment>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            )}
-                        </div>
-
-                        <div className="p-6 bg-gray-50 border-t border-gray-200">
-                            <div className="flex justify-between items-end mb-4">
-                                <span className="text-gray-500 font-medium uppercase text-sm">Total da Nota</span>
-                                <span className="text-3xl font-bold text-slate-800">R$ {totalPurchase.toFixed(2)}</span>
-                            </div>
-
+                        {currentStep < 3 ? (
                             <button
-                                type="submit"
-                                form="purchase-form"
-                                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-bold flex justify-center items-center gap-2 shadow-lg shadow-emerald-200 transition-all"
+                                onClick={() => {
+                                    if (currentStep === 1 && !supplier && entryType !== 'ADJUSTMENT') {
+                                        alert("Por favor, informe o fornecedor.");
+                                        return;
+                                    }
+                                    if (currentStep === 2 && cart.length === 0) {
+                                        alert("Adicione pelo menos um produto ao carrinho.");
+                                        return;
+                                    }
+                                    setCurrentStep(prev => Math.min(3, prev + 1));
+                                }}
+                                className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold flex items-center gap-2 hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition-all"
                             >
-                                <Save size={20} /> Finalizar Entrada
+                                Próximo <ChevronRight size={20} />
                             </button>
-                        </div>
+                        ) : (
+                            <button
+                                onClick={handleFinalize}
+                                className="px-8 py-3 bg-emerald-600 text-white rounded-xl font-bold flex items-center gap-2 hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition-all transform hover:-translate-y-0.5"
+                            >
+                                <Save size={20} /> Finalizar Compra
+                            </button>
+                        )}
                     </div>
                 </div>
             ) : (

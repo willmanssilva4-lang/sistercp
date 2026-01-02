@@ -16,7 +16,8 @@ import {
     X,
     ChevronDown,
     Wallet,
-    TrendingUp
+    TrendingUp,
+    Calendar
 } from 'lucide-react';
 import {
     AreaChart,
@@ -61,6 +62,7 @@ const DEFAULT_EXPENSE_CATEGORIES = [
 const Finance: React.FC<FinanceProps> = ({ transactions, onAddTransaction, onUpdateStatus, onDeleteTransaction, onNavigate, currentUser }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isCashRegisterModalOpen, setIsCashRegisterModalOpen] = useState(false);
+    const [isPayModalOpen, setIsPayModalOpen] = useState(false);
     const [filterType, setFilterType] = useState<'ALL' | 'INCOME' | 'EXPENSE'>('ALL');
     const [filterStatus, setFilterStatus] = useState<'ALL' | 'PAID' | 'PENDING'>('ALL');
 
@@ -277,6 +279,17 @@ const Finance: React.FC<FinanceProps> = ({ transactions, onAddTransaction, onUpd
                         className="bg-indigo-600 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all"
                     >
                         <Wallet size={20} /> Controle de Caixa
+                    </button>
+                    <button
+                        onClick={() => setIsPayModalOpen(true)}
+                        className="bg-orange-500 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 hover:bg-orange-600 shadow-lg shadow-orange-200 transition-all relative"
+                    >
+                        <AlertCircle size={20} /> Contas a Pagar
+                        {stats.pendingPayable > 0 && (
+                            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full border-2 border-white">
+                                !
+                            </span>
+                        )}
                     </button>
                     <button
                         onClick={() => setIsCategoryModalOpen(true)}
@@ -579,190 +592,274 @@ const Finance: React.FC<FinanceProps> = ({ transactions, onAddTransaction, onUpd
             </div>
 
             {/* MODAL: CATEGORIES MANAGEMENT */}
-            {isCategoryModalOpen && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl animate-scale-in flex flex-col max-h-[85vh]">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-xl font-bold text-gray-800">Categorias Financeiras</h3>
-                            <button onClick={() => setIsCategoryModalOpen(false)}><X className="text-gray-400 hover:text-gray-600" /></button>
-                        </div>
-
-                        <div className="flex bg-gray-100 p-1 rounded-lg mb-4">
-                            <button onClick={() => setCategoryTab('EXPENSE')} className={`flex-1 py-2 text-sm font-bold rounded transition-colors ${categoryTab === 'EXPENSE' ? 'bg-white shadow text-red-600' : 'text-gray-500'}`}>Despesas / Saídas</button>
-                            <button onClick={() => setCategoryTab('INCOME')} className={`flex-1 py-2 text-sm font-bold rounded transition-colors ${categoryTab === 'INCOME' ? 'bg-white shadow text-emerald-600' : 'text-gray-500'}`}>Receitas / Entradas</button>
-                        </div>
-
-                        <form onSubmit={handleAddCategory} className="flex gap-2 mb-4">
-                            <input
-                                autoFocus
-                                type="text"
-                                placeholder="Nova categoria..."
-                                className="flex-1 border p-2 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500"
-                                value={newCategoryInput}
-                                onChange={e => setNewCategoryInput(e.target.value)}
-                            />
-                            <button type="submit" className="bg-emerald-600 text-white px-4 rounded-lg font-bold hover:bg-emerald-700"><Plus size={20} /></button>
-                        </form>
-
-                        <div className="flex-1 overflow-y-auto border rounded-lg bg-gray-50 p-2 space-y-2">
-                            {(categoryTab === 'INCOME' ? incomeCategories : expenseCategories).map(cat => (
-                                <div key={cat} className="flex justify-between items-center p-3 bg-white border rounded shadow-sm">
-                                    <span className="font-medium text-gray-700">{cat}</span>
-                                    <button
-                                        onClick={() => handleDeleteCategory(cat)}
-                                        className="text-gray-400 hover:text-red-500 p-1"
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Modal Add Transaction */}
-            {isModalOpen && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl animate-scale-in">
-                        <h3 className="text-xl font-bold mb-4 text-gray-800">Novo Lançamento</h3>
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div
-                                    className={`p-3 border rounded-xl text-center cursor-pointer transition-all ${formData.type === 'INCOME' ? 'border-emerald-500 bg-emerald-50 text-emerald-700 font-bold' : 'border-gray-200'}`}
-                                    onClick={() => setFormData({ ...formData, type: 'INCOME' })}
-                                >
-                                    Entrada
-                                </div>
-                                <div
-                                    className={`p-3 border rounded-xl text-center cursor-pointer transition-all ${formData.type === 'EXPENSE' ? 'border-red-500 bg-red-50 text-red-700 font-bold' : 'border-gray-200'}`}
-                                    onClick={() => setFormData({ ...formData, type: 'EXPENSE' })}
-                                >
-                                    Saída / Despesa
-                                </div>
+            {
+                isCategoryModalOpen && (
+                    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl animate-scale-in flex flex-col max-h-[85vh]">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-xl font-bold text-gray-800">Categorias Financeiras</h3>
+                                <button onClick={() => setIsCategoryModalOpen(false)}><X className="text-gray-400 hover:text-gray-600" /></button>
                             </div>
 
-                            {/* Helper Text */}
-                            <div className="text-xs text-gray-500 text-center bg-gray-50 p-2 rounded-lg">
-                                {formData.type === 'INCOME'
-                                    ? 'Dinheiro que entra no caixa (Vendas, Recebimentos).'
-                                    : 'Dinheiro que sai do caixa (Contas, Fornecedores).'}
+                            <div className="flex bg-gray-100 p-1 rounded-lg mb-4">
+                                <button onClick={() => setCategoryTab('EXPENSE')} className={`flex-1 py-2 text-sm font-bold rounded transition-colors ${categoryTab === 'EXPENSE' ? 'bg-white shadow text-red-600' : 'text-gray-500'}`}>Despesas / Saídas</button>
+                                <button onClick={() => setCategoryTab('INCOME')} className={`flex-1 py-2 text-sm font-bold rounded transition-colors ${categoryTab === 'INCOME' ? 'bg-white shadow text-emerald-600' : 'text-gray-500'}`}>Receitas / Entradas</button>
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
-                                <input required type="text" className="w-full border p-2.5 rounded-lg focus:ring-emerald-500 focus:outline-none"
-                                    placeholder={formData.type === 'INCOME' ? "Ex: Venda de sucata" : "Ex: Conta de Luz (Cemig)"}
-                                    value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} />
-                            </div>
+                            <form onSubmit={handleAddCategory} className="flex gap-2 mb-4">
+                                <input
+                                    autoFocus
+                                    type="text"
+                                    placeholder="Nova categoria..."
+                                    className="flex-1 border p-2 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500"
+                                    value={newCategoryInput}
+                                    onChange={e => setNewCategoryInput(e.target.value)}
+                                />
+                                <button type="submit" className="bg-emerald-600 text-white px-4 rounded-lg font-bold hover:bg-emerald-700"><Plus size={20} /></button>
+                            </form>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
-                                    <input required type="number" step="0.01" className="w-full border p-2.5 rounded-lg focus:ring-emerald-500 focus:outline-none"
-                                        value={formData.amount} onChange={e => setFormData({ ...formData, amount: e.target.value })} />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
-                                    <div className="flex gap-1">
-                                        {isAddingNewCategory ? (
-                                            <input
-                                                type="text"
-                                                autoFocus
-                                                className="w-full border p-2.5 rounded-lg focus:ring-emerald-500 focus:outline-none bg-emerald-50"
-                                                placeholder="Nova categoria..."
-                                                value={formData.category}
-                                                onChange={e => setFormData({ ...formData, category: e.target.value })}
-                                            />
-                                        ) : (
-                                            <select className="w-full border p-2.5 rounded-lg focus:ring-emerald-500 focus:outline-none bg-white"
-                                                value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })}>
-                                                {formData.type === 'INCOME'
-                                                    ? incomeCategories.map(c => <option key={c} value={c}>{c}</option>)
-                                                    : expenseCategories.map(c => <option key={c} value={c}>{c}</option>)
-                                                }
-                                            </select>
-                                        )}
+                            <div className="flex-1 overflow-y-auto border rounded-lg bg-gray-50 p-2 space-y-2">
+                                {(categoryTab === 'INCOME' ? incomeCategories : expenseCategories).map(cat => (
+                                    <div key={cat} className="flex justify-between items-center p-3 bg-white border rounded shadow-sm">
+                                        <span className="font-medium text-gray-700">{cat}</span>
                                         <button
-                                            type="button"
-                                            onClick={() => {
-                                                setIsAddingNewCategory(!isAddingNewCategory);
-                                                // Reset to default selection if cancelling, or clear for typing
-                                                if (isAddingNewCategory) {
-                                                    setFormData(prev => ({
-                                                        ...prev,
-                                                        category: formData.type === 'INCOME' ? incomeCategories[0] : expenseCategories[0]
-                                                    }));
-                                                } else {
-                                                    setFormData(prev => ({ ...prev, category: '' }));
-                                                }
-                                            }}
-                                            className={`p-2 rounded-lg border flex items-center justify-center transition-colors ${isAddingNewCategory ? 'border-red-200 bg-red-50 text-red-600' : 'border-gray-200 bg-gray-50 text-emerald-600 hover:bg-emerald-50'}`}
-                                            title={isAddingNewCategory ? "Cancelar nova categoria" : "Criar nova categoria"}
+                                            onClick={() => handleDeleteCategory(cat)}
+                                            className="text-gray-400 hover:text-red-500 p-1"
                                         >
-                                            {isAddingNewCategory ? <X size={20} /> : <Plus size={20} />}
+                                            <Trash2 size={16} />
                                         </button>
                                     </div>
-                                </div>
+                                ))}
                             </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Data Competência</label>
-                                    <input required type="date" className="w-full border p-2.5 rounded-lg focus:ring-emerald-500 focus:outline-none"
-                                        value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Vencimento</label>
-                                    <input required type="date" className="w-full border p-2.5 rounded-lg focus:ring-emerald-500 focus:outline-none"
-                                        value={formData.dueDate} onChange={e => setFormData({ ...formData, dueDate: e.target.value })} />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Status Inicial</label>
-                                <select className="w-full border p-2.5 rounded-lg focus:ring-emerald-500 focus:outline-none"
-                                    value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })}>
-                                    <option value="PAID">
-                                        {formData.type === 'INCOME' ? 'Já Recebido (Caiu no caixa)' : 'Já Pago (Saiu do caixa)'}
-                                    </option>
-                                    <option value="PENDING">
-                                        {formData.type === 'INCOME' ? 'A Receber (Futuro)' : 'A Pagar (Boleto/Futuro)'}
-                                    </option>
-                                </select>
-                            </div>
-
-                            <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
-                                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded-lg font-medium">Cancelar</button>
-                                <button type="submit" className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium">Salvar Lançamento</button>
-                            </div>
-                        </form>
+                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
+
+            {/* Modal Add Transaction */}
+            {
+                isModalOpen && (
+                    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl animate-scale-in">
+                            <h3 className="text-xl font-bold mb-4 text-gray-800">Novo Lançamento</h3>
+                            <form onSubmit={handleSubmit} className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div
+                                        className={`p-3 border rounded-xl text-center cursor-pointer transition-all ${formData.type === 'INCOME' ? 'border-emerald-500 bg-emerald-50 text-emerald-700 font-bold' : 'border-gray-200'}`}
+                                        onClick={() => setFormData({ ...formData, type: 'INCOME' })}
+                                    >
+                                        Entrada
+                                    </div>
+                                    <div
+                                        className={`p-3 border rounded-xl text-center cursor-pointer transition-all ${formData.type === 'EXPENSE' ? 'border-red-500 bg-red-50 text-red-700 font-bold' : 'border-gray-200'}`}
+                                        onClick={() => setFormData({ ...formData, type: 'EXPENSE' })}
+                                    >
+                                        Saída / Despesa
+                                    </div>
+                                </div>
+
+                                {/* Helper Text */}
+                                <div className="text-xs text-gray-500 text-center bg-gray-50 p-2 rounded-lg">
+                                    {formData.type === 'INCOME'
+                                        ? 'Dinheiro que entra no caixa (Vendas, Recebimentos).'
+                                        : 'Dinheiro que sai do caixa (Contas, Fornecedores).'}
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                                    <input required type="text" className="w-full border p-2.5 rounded-lg focus:ring-emerald-500 focus:outline-none"
+                                        placeholder={formData.type === 'INCOME' ? "Ex: Venda de sucata" : "Ex: Conta de Luz (Cemig)"}
+                                        value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
+                                        <input required type="number" step="0.01" className="w-full border p-2.5 rounded-lg focus:ring-emerald-500 focus:outline-none"
+                                            value={formData.amount} onChange={e => setFormData({ ...formData, amount: e.target.value })} />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+                                        <div className="flex gap-1">
+                                            {isAddingNewCategory ? (
+                                                <input
+                                                    type="text"
+                                                    autoFocus
+                                                    className="w-full border p-2.5 rounded-lg focus:ring-emerald-500 focus:outline-none bg-emerald-50"
+                                                    placeholder="Nova categoria..."
+                                                    value={formData.category}
+                                                    onChange={e => setFormData({ ...formData, category: e.target.value })}
+                                                />
+                                            ) : (
+                                                <select className="w-full border p-2.5 rounded-lg focus:ring-emerald-500 focus:outline-none bg-white"
+                                                    value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })}>
+                                                    {formData.type === 'INCOME'
+                                                        ? incomeCategories.map(c => <option key={c} value={c}>{c}</option>)
+                                                        : expenseCategories.map(c => <option key={c} value={c}>{c}</option>)
+                                                    }
+                                                </select>
+                                            )}
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setIsAddingNewCategory(!isAddingNewCategory);
+                                                    // Reset to default selection if cancelling, or clear for typing
+                                                    if (isAddingNewCategory) {
+                                                        setFormData(prev => ({
+                                                            ...prev,
+                                                            category: formData.type === 'INCOME' ? incomeCategories[0] : expenseCategories[0]
+                                                        }));
+                                                    } else {
+                                                        setFormData(prev => ({ ...prev, category: '' }));
+                                                    }
+                                                }}
+                                                className={`p-2 rounded-lg border flex items-center justify-center transition-colors ${isAddingNewCategory ? 'border-red-200 bg-red-50 text-red-600' : 'border-gray-200 bg-gray-50 text-emerald-600 hover:bg-emerald-50'}`}
+                                                title={isAddingNewCategory ? "Cancelar nova categoria" : "Criar nova categoria"}
+                                            >
+                                                {isAddingNewCategory ? <X size={20} /> : <Plus size={20} />}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Data Competência</label>
+                                        <input required type="date" className="w-full border p-2.5 rounded-lg focus:ring-emerald-500 focus:outline-none"
+                                            value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Vencimento</label>
+                                        <input required type="date" className="w-full border p-2.5 rounded-lg focus:ring-emerald-500 focus:outline-none"
+                                            value={formData.dueDate} onChange={e => setFormData({ ...formData, dueDate: e.target.value })} />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Status Inicial</label>
+                                    <select className="w-full border p-2.5 rounded-lg focus:ring-emerald-500 focus:outline-none"
+                                        value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })}>
+                                        <option value="PAID">
+                                            {formData.type === 'INCOME' ? 'Já Recebido (Caiu no caixa)' : 'Já Pago (Saiu do caixa)'}
+                                        </option>
+                                        <option value="PENDING">
+                                            {formData.type === 'INCOME' ? 'A Receber (Futuro)' : 'A Pagar (Boleto/Futuro)'}
+                                        </option>
+                                    </select>
+                                </div>
+
+                                <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
+                                    <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded-lg font-medium">Cancelar</button>
+                                    <button type="submit" className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium">Salvar Lançamento</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )
+            }
             {/* Modal Cash Register */}
-            {isCashRegisterModalOpen && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl w-full max-w-6xl shadow-2xl animate-scale-in flex flex-col max-h-[90vh] overflow-hidden">
-                        <div className="p-4 border-b flex justify-between items-center bg-gray-50">
-                            <h3 className="text-xl font-bold text-gray-800">Controle de Caixa</h3>
-                            <button
-                                onClick={() => setIsCashRegisterModalOpen(false)}
-                                className="p-2 hover:bg-gray-200 rounded-full transition-colors"
-                            >
-                                <X className="text-gray-500" />
-                            </button>
-                        </div>
-                        <div className="flex-1 overflow-y-auto">
-                            <CashRegister
-                                currentUser={currentUser}
-                                onSessionOpen={() => setIsCashRegisterModalOpen(false)}
-                            />
+            {
+                isCashRegisterModalOpen && (
+                    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-2xl w-full max-w-6xl shadow-2xl animate-scale-in flex flex-col max-h-[90vh] overflow-hidden">
+                            <div className="p-4 border-b flex justify-between items-center bg-gray-50">
+                                <h3 className="text-xl font-bold text-gray-800">Controle de Caixa</h3>
+                                <button
+                                    onClick={() => setIsCashRegisterModalOpen(false)}
+                                    className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+                                >
+                                    <X className="text-gray-500" />
+                                </button>
+                            </div>
+                            <div className="flex-1 overflow-y-auto">
+                                <CashRegister
+                                    currentUser={currentUser}
+                                    onSessionOpen={() => setIsCashRegisterModalOpen(false)}
+                                />
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+
+            {/* Modal Pay Bills */}
+            {
+                isPayModalOpen && (
+                    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl animate-scale-in flex flex-col max-h-[85vh]">
+                            <div className="p-5 border-b flex justify-between items-center bg-gray-50 rounded-t-2xl">
+                                <div>
+                                    <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                                        <AlertCircle className="text-orange-500" /> Contas a Pagar
+                                    </h3>
+                                    <p className="text-sm text-gray-500">Gerencie vencimentos e pagamentos pendentes</p>
+                                </div>
+                                <button onClick={() => setIsPayModalOpen(false)}><X className="text-gray-400 hover:text-gray-600" /></button>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
+                                {transactions
+                                    .filter(t => t.type === 'EXPENSE' && t.status === 'PENDING')
+                                    .sort((a, b) => new Date(a.dueDate || a.date).getTime() - new Date(b.dueDate || b.date).getTime())
+                                    .length === 0 ? (
+                                    <div className="text-center py-12 text-gray-400">
+                                        <CheckCircle2 size={48} className="mx-auto mb-3 text-emerald-200" />
+                                        <p className="text-lg font-medium text-gray-600">Tudo em dia!</p>
+                                        <p className="text-sm">Nenhuma conta pendente encontrada.</p>
+                                    </div>
+                                ) : (
+                                    transactions
+                                        .filter(t => t.type === 'EXPENSE' && t.status === 'PENDING')
+                                        .sort((a, b) => new Date(a.dueDate || a.date).getTime() - new Date(b.dueDate || b.date).getTime())
+                                        .map(t => {
+                                            const overdue = isOverdue(t);
+                                            const dueDate = new Date(t.dueDate || t.date);
+                                            const daysDiff = Math.ceil((dueDate.getTime() - new Date().getTime()) / (1000 * 3600 * 24));
+                                            const isNear = daysDiff >= 0 && daysDiff <= 3;
+
+                                            return (
+                                                <div key={t.id} className={`bg-white p-4 rounded-xl border shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 transition-all hover:shadow-md ${overdue ? 'border-l-4 border-l-red-500' : (isNear ? 'border-l-4 border-l-orange-400' : 'border-l-4 border-l-gray-300')}`}>
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <span className={`text-xs font-bold px-2 py-0.5 rounded uppercase ${overdue ? 'bg-red-100 text-red-700' : (isNear ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600')}`}>
+                                                                {overdue ? 'Vencida' : (isNear ? 'Vence em breve' : 'A Vencer')}
+                                                            </span>
+                                                            <span className="text-xs text-gray-400">{t.category}</span>
+                                                        </div>
+                                                        <h4 className="font-bold text-gray-800 text-lg">{t.description}</h4>
+                                                        <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
+                                                            <Calendar size={14} />
+                                                            Vencimento: <strong>{dueDate.toLocaleDateString('pt-BR')}</strong>
+                                                            <span className="text-xs text-gray-400">({daysDiff < 0 ? `${Math.abs(daysDiff)} dias atrasado` : (daysDiff === 0 ? 'Vence hoje' : `Faltam ${daysDiff} dias`)})</span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+                                                        <span className="text-xl font-bold text-red-600">R$ {t.amount.toFixed(2)}</span>
+                                                        <button
+                                                            onClick={() => onUpdateStatus(t.id, 'PAID')}
+                                                            className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-100 flex items-center gap-2 transition-transform active:scale-95"
+                                                        >
+                                                            <CheckCircle2 size={18} /> Pagar
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })
+                                )
+                                }
+                            </div>
+                            <div className="p-4 bg-white border-t rounded-b-2xl flex justify-between items-center">
+                                <div className="text-sm text-gray-500">
+                                    Total Pendente: <strong className="text-red-600">R$ {stats.pendingPayable.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
+                                </div>
+                                <button onClick={() => setIsPayModalOpen(false)} className="text-gray-500 hover:text-gray-800 font-medium px-4 py-2">Fechar</button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+        </div >
     );
 };
 

@@ -117,13 +117,59 @@ export const SalesProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         if (saleError) throw saleError;
 
         // 2. Insert Items
-        const itemsToInsert = sale.items.map((item) => ({
-            sale_id: sale.id,
-            product_id: item.id,
-            qty: item.qty,
-            applied_price: item.appliedPrice,
-            subtotal: item.subtotal
-        }));
+        // 2. Insert Items
+        const itemsToInsert = [];
+
+        for (const item of sale.items) {
+            // Check if item is a Kit
+            const kitDef = kits.find(k => k.code === item.code) || kits.find(k => k.id === item.id);
+
+            if (kitDef) {
+                // Explode Kit into components for DB storage (to satisfy FK constraints and track component sales)
+                let totalComponentRetail = 0;
+
+                // Calculate total retail value of components for weighting
+                const kitComponents = kitDef.items.map(ki => {
+                    const prod = products.find(p => p.code === ki.productCode);
+                    const retail = prod?.retailPrice || 0;
+                    totalComponentRetail += (retail * ki.qty);
+                    return { ...ki, retail, prodId: prod?.id };
+                });
+
+                const kitPrice = item.appliedPrice; // The price the kit was sold for (unit price)
+
+                for (const comp of kitComponents) {
+                    if (!comp.prodId) continue; // Skip if product not found
+
+                    // Calculate proportional price for this component
+                    let compPrice = 0;
+                    if (totalComponentRetail > 0) {
+                        const weight = (comp.retail * comp.qty) / totalComponentRetail;
+                        compPrice = (kitPrice * weight) / comp.qty;
+                    } else {
+                        // Fallback if retail prices are 0
+                        compPrice = (kitPrice / kitComponents.length) / comp.qty;
+                    }
+
+                    itemsToInsert.push({
+                        sale_id: sale.id,
+                        product_id: comp.prodId,
+                        qty: comp.qty * item.qty, // Component Qty * Kit Qty
+                        applied_price: compPrice,
+                        subtotal: compPrice * (comp.qty * item.qty)
+                    });
+                }
+            } else {
+                // Normal Product
+                itemsToInsert.push({
+                    sale_id: sale.id,
+                    product_id: item.id,
+                    qty: item.qty,
+                    applied_price: item.appliedPrice,
+                    subtotal: item.subtotal
+                });
+            }
+        }
 
         const { error: itemsError } = await supabase.from('sale_items').insert(itemsToInsert);
         if (itemsError) throw itemsError;

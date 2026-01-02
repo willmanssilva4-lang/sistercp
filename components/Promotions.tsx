@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Product, Promotion, ProductKit, UserRole } from '../types';
-import { Plus, Trash2, Calendar, Tag, Package, Search, Gift, X, Save, AlertCircle, Power, Edit, History } from 'lucide-react';
+import { Plus, Trash2, Calendar, Tag, Package, Search, Gift, X, Save, AlertCircle, Power, Edit, History, Scale, Barcode } from 'lucide-react';
 
 interface PromotionsProps {
     products: Product[];
@@ -53,12 +53,18 @@ const Promotions: React.FC<PromotionsProps> = ({
         name: '',
         code: '',
         price: '',
+        unit: 'UN',
         items: [] as { productCode: string; qty: number; itemPrice: number }[]
     });
 
     // Kit Item Selection State
     const [kitItemSearch, setKitItemSearch] = useState('');
-    const [kitItemQty, setKitItemQty] = useState(1);
+    const [kitItemQty, setKitItemQty] = useState('1');
+
+    // Calculator State
+    const [showCalculator, setShowCalculator] = useState(false);
+    const [calcTotalVolume, setCalcTotalVolume] = useState('');
+    const [calcDesiredVolume, setCalcDesiredVolume] = useState('');
 
     // --- HELPERS ---
     const getProductName = (code: string) => products.find(p => p.code === code)?.name || 'Produto não encontrado';
@@ -167,6 +173,7 @@ const Promotions: React.FC<PromotionsProps> = ({
                 name: kitForm.name,
                 code: kitForm.code,
                 price: parsedPrice,
+                unit: kitForm.unit,
                 items: kitForm.items,
                 active: existingKit ? existingKit.active : true
             };
@@ -177,13 +184,14 @@ const Promotions: React.FC<PromotionsProps> = ({
                 name: kitForm.name,
                 code: kitForm.code,
                 price: parsedPrice,
+                unit: kitForm.unit,
                 items: kitForm.items,
                 active: true
             };
             onAddKit(newKit);
         }
         setIsModalOpen(false);
-        setKitForm({ name: '', code: '', price: '', items: [] });
+        setKitForm({ name: '', code: '', price: '', unit: 'UN', items: [] });
         setEditingKitId(null);
     };
 
@@ -193,6 +201,7 @@ const Promotions: React.FC<PromotionsProps> = ({
             name: kit.name,
             code: kit.code,
             price: kit.price.toString(),
+            unit: kit.unit || 'UN',
             items: kit.items.map(i => ({
                 productCode: i.productCode,
                 qty: i.qty,
@@ -203,18 +212,24 @@ const Promotions: React.FC<PromotionsProps> = ({
     };
 
     const addItemToKit = (product: Product) => {
+        const qty = parseFloat(kitItemQty);
+        if (isNaN(qty) || qty <= 0) {
+            showAlert("Quantidade inválida.");
+            return;
+        }
+
         setKitForm(prev => {
             const existing = prev.items.find(i => i.productCode === product.code);
             if (existing) {
                 return {
                     ...prev,
-                    items: prev.items.map(i => i.productCode === product.code ? { ...i, qty: i.qty + kitItemQty } : i)
+                    items: prev.items.map(i => i.productCode === product.code ? { ...i, qty: i.qty + qty } : i)
                 };
             }
-            return { ...prev, items: [...prev.items, { productCode: product.code, qty: kitItemQty, itemPrice: product.retailPrice }] };
+            return { ...prev, items: [...prev.items, { productCode: product.code, qty: qty, itemPrice: product.retailPrice }] };
         });
         setKitItemSearch('');
-        setKitItemQty(1);
+        setKitItemQty('1');
     };
 
     const removeKitItem = (idx: number) => {
@@ -289,7 +304,7 @@ const Promotions: React.FC<PromotionsProps> = ({
                     onClick={() => {
                         if (activeTab === 'KITS') {
                             setEditingKitId(null);
-                            setKitForm({ name: '', code: '', price: '', items: [] });
+                            setKitForm({ name: '', code: '', price: '', unit: 'UN', items: [] });
                         } else {
                             setPromoForm({
                                 name: '',
@@ -565,71 +580,237 @@ const Promotions: React.FC<PromotionsProps> = ({
                                     </button>
                                 </form>
                             ) : (
-                                <form onSubmit={handleKitSubmit} className="space-y-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Kit</label>
-                                        <input required type="text" className="w-full border p-2.5 rounded-lg focus:ring-emerald-500 outline-none" placeholder="Ex: Kit Churrasco" value={kitForm.name} onChange={e => setKitForm({ ...kitForm, name: e.target.value })} />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Código do Kit (EAN Virtual)</label>
-                                        <input required type="text" className="w-full border p-2.5 rounded-lg focus:ring-emerald-500 outline-none" placeholder="Ex: KIT001" value={kitForm.code} onChange={e => setKitForm({ ...kitForm, code: e.target.value })} />
+                                <form onSubmit={handleKitSubmit} className="space-y-5">
+                                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                                        <div className="md:col-span-8">
+                                            <label className="block text-sm font-medium text-gray-700 mb-1.5">Nome do Kit</label>
+                                            <div className="relative">
+                                                <Package className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                                                <input
+                                                    required
+                                                    type="text"
+                                                    className="w-full border border-gray-300 pl-10 p-2.5 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                                                    placeholder="Ex: Kit Churrasco Premium"
+                                                    value={kitForm.name}
+                                                    onChange={e => setKitForm({ ...kitForm, name: e.target.value })}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="md:col-span-4">
+                                            <label className="block text-sm font-medium text-gray-700 mb-1.5">Unidade</label>
+                                            <div className="relative">
+                                                <Scale className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                                                <select
+                                                    className="w-full border border-gray-300 pl-10 p-2.5 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all appearance-none bg-white"
+                                                    value={kitForm.unit}
+                                                    onChange={e => setKitForm({ ...kitForm, unit: e.target.value })}
+                                                >
+                                                    <option value="UN">UN - Unidade</option>
+                                                    <option value="KG">KG - Quilograma</option>
+                                                    <option value="L">L - Litro</option>
+                                                    <option value="ML">ML - Mililitro</option>
+                                                    <option value="CX">CX - Caixa</option>
+                                                    <option value="PCT">PCT - Pacote</option>
+                                                </select>
+                                            </div>
+                                        </div>
                                     </div>
 
-                                    <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Adicionar Produtos ao Kit</label>
-                                        <div className="flex gap-2 mb-2">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Código do Kit (EAN Virtual)</label>
+                                        <div className="relative">
+                                            <Tag className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                                            <input
+                                                required
+                                                type="text"
+                                                className="w-full border border-gray-300 pl-10 p-2.5 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                                                placeholder="Ex: KIT001"
+                                                value={kitForm.code}
+                                                onChange={e => setKitForm({ ...kitForm, code: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 shadow-sm">
+                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2">
+                                            <Gift size={14} /> Composição do Kit
+                                        </label>
+
+                                        <div className="flex gap-2 mb-3">
                                             <div className="relative flex-1">
-                                                <input type="text" placeholder="Buscar item..." className="w-full border p-2 rounded text-sm" value={kitItemSearch} onChange={e => setKitItemSearch(e.target.value)} />
+                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Buscar produtos para adicionar..."
+                                                    className="w-full border border-gray-300 pl-9 p-2 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                                                    value={kitItemSearch}
+                                                    onChange={e => setKitItemSearch(e.target.value)}
+                                                />
                                                 {filteredKitProducts.length > 0 && (
-                                                    <div className="absolute top-full left-0 w-full mt-1 bg-white border rounded shadow-xl max-h-32 overflow-y-auto z-10">
+                                                    <div className="absolute top-full left-0 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-48 overflow-y-auto z-20">
                                                         {filteredKitProducts.map(p => (
-                                                            <div key={p.id} onClick={() => addItemToKit(p)} className="p-2 hover:bg-blue-50 cursor-pointer text-xs border-b">
-                                                                {p.name}
+                                                            <div
+                                                                key={p.id}
+                                                                onClick={() => addItemToKit(p)}
+                                                                className="p-2.5 hover:bg-emerald-50 cursor-pointer text-sm border-b border-gray-50 last:border-0 flex justify-between items-center group"
+                                                            >
+                                                                <span className="font-medium text-gray-700 group-hover:text-emerald-700">{p.name}</span>
+                                                                <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full group-hover:bg-emerald-100 group-hover:text-emerald-600">R$ {p.retailPrice.toFixed(2)}</span>
                                                             </div>
                                                         ))}
                                                     </div>
                                                 )}
                                             </div>
-                                            <input type="number" min="1" className="w-16 border p-2 rounded text-sm text-center" value={kitItemQty} onChange={e => setKitItemQty(parseInt(e.target.value))} />
+                                            <div className="w-24">
+                                                <input
+                                                    type="number"
+                                                    min="0.000001"
+                                                    step="0.000001"
+                                                    className="w-full border border-gray-300 p-2 rounded-lg text-sm text-center focus:ring-2 focus:ring-emerald-500 outline-none"
+                                                    value={kitItemQty}
+                                                    onChange={e => setKitItemQty(e.target.value)}
+                                                    placeholder="Qtd"
+                                                    title="Quantidade (ex: 0.5 para 500g/ml)"
+                                                />
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowCalculator(!showCalculator)}
+                                                className={`p-2 rounded-lg border transition-colors ${showCalculator ? 'bg-emerald-100 border-emerald-200 text-emerald-700' : 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200'}`}
+                                                title="Calculadora de Conversão"
+                                            >
+                                                <div className="flex items-center justify-center w-5 h-5 font-bold text-xs">
+                                                    %
+                                                </div>
+                                            </button>
                                         </div>
 
-                                        <div className="space-y-1 max-h-60 overflow-y-auto">
-                                            {kitForm.items.map((item, idx) => (
-                                                <div key={idx} className="flex flex-col bg-white p-2 rounded border border-gray-200 text-sm gap-2">
-                                                    <div className="flex justify-between items-center">
-                                                        <span className="font-bold">{item.qty}x {getProductName(item.productCode)} <span className="text-xs font-normal text-gray-500">({getProductUnit(item.productCode)})</span></span>
-                                                        <button type="button" onClick={() => removeKitItem(idx)} className="text-red-400 hover:text-red-600"><X size={14} /></button>
+                                        {showCalculator && (
+                                            <div className="mb-4 bg-emerald-50 p-3 rounded-lg border border-emerald-100 animate-fade-in">
+                                                <label className="block text-xs font-bold text-emerald-800 mb-2 uppercase">Conversor de Medidas (Regra de 3)</label>
+                                                <div className="flex items-end gap-2">
+                                                    <div className="flex-1">
+                                                        <label className="block text-[10px] text-emerald-700 mb-1">Total na Embalagem (ex: 2000ml)</label>
+                                                        <input
+                                                            type="number"
+                                                            className="w-full border border-emerald-200 p-1.5 rounded text-sm focus:ring-1 focus:ring-emerald-500 outline-none"
+                                                            placeholder="Ex: 2000"
+                                                            value={calcTotalVolume}
+                                                            onChange={e => setCalcTotalVolume(e.target.value)}
+                                                        />
                                                     </div>
-                                                    <div className="flex justify-between items-center text-xs text-gray-500">
-                                                        <span>Custo Unit.: R$ {getProductCostPrice(item.productCode).toFixed(2)}</span>
-                                                        <div className="flex items-center gap-1">
-                                                            <span>Preço no Kit:</span>
-                                                            <input
-                                                                type="number"
-                                                                step="0.01"
-                                                                className="w-20 border p-1 rounded text-right text-gray-800 font-medium"
-                                                                value={item.itemPrice || ''}
-                                                                onChange={e => updateKitItemPrice(idx, parseFloat(e.target.value))}
-                                                            />
+                                                    <div className="flex-1">
+                                                        <label className="block text-[10px] text-emerald-700 mb-1">Qtd. Desejada (ex: 0.04ml)</label>
+                                                        <input
+                                                            type="number"
+                                                            className="w-full border border-emerald-200 p-1.5 rounded text-sm focus:ring-1 focus:ring-emerald-500 outline-none"
+                                                            placeholder="Ex: 0.04"
+                                                            value={calcDesiredVolume}
+                                                            onChange={e => setCalcDesiredVolume(e.target.value)}
+                                                        />
+                                                    </div>
+                                                    <div className="flex-none pb-0.5">
+                                                        <span className="text-emerald-400 font-bold">=</span>
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <label className="block text-[10px] text-emerald-700 mb-1">Resultado (Fração)</label>
+                                                        <div className="w-full bg-white border border-emerald-200 p-1.5 rounded text-sm font-bold text-emerald-800 h-[34px] flex items-center">
+                                                            {calcTotalVolume && calcDesiredVolume && parseFloat(calcTotalVolume) > 0
+                                                                ? (parseFloat(calcDesiredVolume) / parseFloat(calcTotalVolume)).toFixed(6)
+                                                                : '0.000000'}
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            if (calcTotalVolume && calcDesiredVolume && parseFloat(calcTotalVolume) > 0) {
+                                                                const result = parseFloat(calcDesiredVolume) / parseFloat(calcTotalVolume);
+                                                                setKitItemQty(result.toFixed(6));
+                                                                setShowCalculator(false);
+                                                            }
+                                                        }}
+                                                        className="bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-700 h-[34px]"
+                                                    >
+                                                        Usar
+                                                    </button>
+                                                </div>
+                                                <p className="text-[10px] text-emerald-600 mt-2 italic">
+                                                    Ex: Se o frasco tem 2000ml e você quer 0.04ml, o sistema calculará a fração (0.000020) para descontar corretamente do estoque.
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        <div className="space-y-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
+                                            {kitForm.items.map((item, idx) => (
+                                                <div key={idx} className="flex flex-col bg-white p-3 rounded-lg border border-gray-200 shadow-sm gap-2 hover:border-emerald-200 transition-colors">
+                                                    <div className="flex justify-between items-start">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="bg-emerald-100 text-emerald-700 text-xs font-bold px-2 py-1 rounded-md">{item.qty}x</span>
+                                                            <span className="font-bold text-gray-700">{getProductName(item.productCode)}</span>
+                                                            <span className="text-xs text-gray-400">({getProductUnit(item.productCode)})</span>
+                                                        </div>
+                                                        <button type="button" onClick={() => removeKitItem(idx)} className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1 rounded-full transition-colors"><X size={16} /></button>
+                                                    </div>
+
+                                                    <div className="flex items-center justify-between bg-gray-50 p-2 rounded-md mt-1">
+                                                        <div className="text-xs text-gray-500">
+                                                            Custo Unit.: <span className="font-medium">R$ {getProductCostPrice(item.productCode).toFixed(2)}</span>
+                                                            <span className="mx-2">|</span>
+                                                            Custo Porção: <span className="font-medium text-emerald-600">R$ {(getProductCostPrice(item.productCode) * item.qty).toFixed(4)}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-xs font-medium text-gray-600">Preço no Kit:</span>
+                                                            <div className="relative">
+                                                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">R$</span>
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    className="w-20 border border-gray-300 py-1 pl-6 pr-1 rounded text-right text-sm font-bold text-gray-800 focus:ring-1 focus:ring-emerald-500 outline-none"
+                                                                    value={item.itemPrice || ''}
+                                                                    onChange={e => updateKitItemPrice(idx, parseFloat(e.target.value))}
+                                                                />
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
                                             ))}
+                                            {kitForm.items.length === 0 && (
+                                                <div className="text-center py-8 text-gray-400 bg-white rounded-lg border border-dashed border-gray-300">
+                                                    <Package size={32} className="mx-auto mb-2 opacity-20" />
+                                                    <p className="text-sm">Nenhum produto adicionado ao kit</p>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 
-                                    <div className="flex flex-col gap-2 bg-blue-50 p-3 rounded-lg border border-blue-100">
-                                        <div className="flex justify-between text-xs text-blue-800">
-                                            <span>Custo Total: <strong>R$ {calculateKitCostTotal().toFixed(2)}</strong></span>
-                                            <span>Venda Original: <strong>R$ {calculateKitOriginalTotal().toFixed(2)}</strong></span>
+                                    <div className="flex flex-col gap-3 bg-blue-50 p-4 rounded-xl border border-blue-100 shadow-sm">
+                                        <div className="flex justify-between text-sm text-blue-800">
+                                            <span>Custo Total dos Itens:</span>
+                                            <strong>R$ {calculateKitCostTotal().toFixed(4)}</strong>
                                         </div>
-                                        <div className="flex justify-between items-center pt-2 border-t border-blue-200">
-                                            <label className="text-sm font-bold text-gray-700">Preço Final do Kit:</label>
-                                            <input required type="number" step="0.01" className="w-24 border p-2 rounded font-bold text-emerald-600 text-right" value={kitForm.price} onChange={e => setKitForm({ ...kitForm, price: e.target.value })} />
+                                        <div className="flex justify-between text-sm text-blue-800/70">
+                                            <span>Valor de Venda (Soma):</span>
+                                            <strong>R$ {calculateKitOriginalTotal().toFixed(2)}</strong>
+                                        </div>
+                                        <div className="flex justify-between items-center pt-3 border-t border-blue-200 mt-1">
+                                            <label className="text-base font-bold text-gray-800">Preço Final do Kit:</label>
+                                            <div className="relative">
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-700 font-bold">R$</span>
+                                                <input
+                                                    required
+                                                    type="number"
+                                                    step="0.01"
+                                                    className="w-32 border-2 border-emerald-100 pl-8 pr-3 py-2 rounded-lg font-bold text-emerald-700 text-xl text-right focus:border-emerald-500 focus:ring-0 outline-none shadow-sm"
+                                                    value={kitForm.price}
+                                                    onChange={e => setKitForm({ ...kitForm, price: e.target.value })}
+                                                />
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <button type="submit" className="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold mt-4 hover:bg-emerald-700 transition-colors">{editingKitId ? 'Salvar Alterações' : 'Criar Kit'}</button>
+                                    <button type="submit" className="w-full bg-emerald-600 text-white py-3.5 rounded-xl font-bold text-lg shadow-lg shadow-emerald-200 hover:bg-emerald-700 hover:shadow-emerald-300 transition-all transform hover:-translate-y-0.5">
+                                        {editingKitId ? 'Salvar Alterações' : 'Criar Kit'}
+                                    </button>
                                 </form>
                             )}
                         </div>
