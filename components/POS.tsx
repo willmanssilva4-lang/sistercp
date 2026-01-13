@@ -166,7 +166,7 @@ const POS: React.FC<POSProps> = ({ products, promotions = [], kits = [], onProce
         }
 
         // Default Wholesale/Retail Logic
-        return qty >= product.wholesaleMinQty ? product.wholesalePrice : product.retailPrice;
+        return (product.wholesaleMinQty > 0 && qty >= product.wholesaleMinQty && product.wholesalePrice > 0) ? product.wholesalePrice : product.retailPrice;
     };
 
     // Combine products and kits for search with dynamic stock calculation

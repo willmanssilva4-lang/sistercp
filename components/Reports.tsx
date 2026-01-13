@@ -252,7 +252,9 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
                                         currentView === 'PURCHASES' ? 'Relatório de Compras' :
                                             currentView === 'RETURNS' ? 'Devoluções' :
                                                 currentView === 'CANCELLED' ? 'Vendas Canceladas' :
-                                                    currentView === 'DRE' ? 'Demonstrativo do Resultado (DRE)' : 'Relatório';
+                                                    currentView === 'DRE' ? 'Demonstrativo do Resultado (DRE)' :
+                                                        currentView === 'SALES_PROFIT_DETAIL' ? 'Lucros nas Vendas' :
+                                                            currentView === 'PRODUCT_PROFIT_ANALYSIS' ? 'Lucro dos produtos vendidos' : 'Relatório';
 
         if (format === 'CSV') {
             let csvContent = "data:text/csv;charset=utf-8,";
@@ -338,6 +340,41 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
                     const ticket = h.count > 0 ? h.net / h.count : 0;
                     const percent = totalNetExport > 0 ? (h.net / totalNetExport) * 100 : 0;
                     csvContent += `${h.label} (${h.start}-${h.end});${h.count};${h.gross.toFixed(2).replace('.', ',')};${h.discount.toFixed(2).replace('.', ',')};${h.net.toFixed(2).replace('.', ',')};${ticket.toFixed(2).replace('.', ',')};${percent.toFixed(2).replace('.', ',')}%\n`;
+                });
+            } else if (currentView === 'SALES_PROFIT_DETAIL') {
+                csvContent += "Data;Produto;Codigo;Qtd;Venda Total;Custo Total;Lucro;Margem %\n";
+                const allItems = filteredSales.flatMap(s =>
+                    s.items.map(i => ({
+                        date: s.timestamp,
+                        name: i.name,
+                        code: i.code || '-',
+                        qty: i.qty,
+                        revenue: i.appliedPrice * i.qty,
+                        cost: (i.costPrice || 0) * i.qty
+                    }))
+                );
+                allItems.forEach(item => {
+                    const profit = item.revenue - item.cost;
+                    const margin = item.revenue > 0 ? (profit / item.revenue) * 100 : 0;
+                    csvContent += `${new Date(item.date).toLocaleDateString('pt-BR')};${item.name};${item.code};${item.qty};${item.revenue.toFixed(2).replace('.', ',')};${item.cost.toFixed(2).replace('.', ',')};${profit.toFixed(2).replace('.', ',')};${margin.toFixed(2).replace('.', ',')}%\n`;
+                });
+            } else if (currentView === 'PRODUCT_PROFIT_ANALYSIS') {
+                csvContent += "Produto;Codigo;Qtd Vendida;Venda Total;Custo Total;Lucro Total;Lucro Medio;Margem Media %\n";
+                const productMap: Record<string, any> = {};
+                filteredSales.forEach(s => {
+                    s.items.forEach(i => {
+                        const key = i.code || i.name;
+                        if (!productMap[key]) productMap[key] = { name: i.name, code: i.code || '-', qty: 0, revenue: 0, cost: 0 };
+                        productMap[key].qty += i.qty;
+                        productMap[key].revenue += (i.appliedPrice * i.qty);
+                        productMap[key].cost += ((i.costPrice || 0) * i.qty);
+                    });
+                });
+                Object.values(productMap).sort((a: any, b: any) => b.revenue - a.revenue).forEach((item: any) => {
+                    const profit = item.revenue - item.cost;
+                    const avgProfit = item.qty > 0 ? profit / item.qty : 0;
+                    const margin = item.revenue > 0 ? (profit / item.revenue) * 100 : 0;
+                    csvContent += `${item.name};${item.code};${item.qty};${item.revenue.toFixed(2).replace('.', ',')};${item.cost.toFixed(2).replace('.', ',')};${profit.toFixed(2).replace('.', ',')};${avgProfit.toFixed(2).replace('.', ',')};${margin.toFixed(2).replace('.', ',')}%\n`;
                 });
             } else if (currentView === 'DRE') {
                 const grossRevenue = filteredSales.reduce((acc, s) => acc + s.items.reduce((iAcc, item) => iAcc + (item.retailPrice * item.qty), 0), 0);
@@ -486,6 +523,68 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
 
                 autoTable(doc, {
                     head: [['Faixa', 'Qtd', 'Bruto', 'Desc.', 'Líquido', 'Ticket Médio', '% Part.']],
+                    body: tableData,
+                    startY: 40,
+                });
+            } else if (currentView === 'SALES_PROFIT_DETAIL') {
+                const allItems = filteredSales.flatMap(s =>
+                    s.items.map(i => ({
+                        date: s.timestamp,
+                        name: i.name,
+                        qty: i.qty,
+                        revenue: i.appliedPrice * i.qty,
+                        cost: (i.costPrice || 0) * i.qty
+                    }))
+                );
+                const tableData = allItems.map(item => {
+                    const profit = item.revenue - item.cost;
+                    const margin = item.revenue > 0 ? (profit / item.revenue) * 100 : 0;
+                    return [
+                        new Date(item.date).toLocaleDateString('pt-BR'),
+                        item.name,
+                        item.qty.toString(),
+                        `R$ ${item.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                        `R$ ${item.cost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                        `R$ ${profit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                        `${margin.toFixed(1)}%`
+                    ];
+                });
+
+                autoTable(doc, {
+                    head: [['Data', 'Produto', 'Qtd', 'Venda', 'Custo', 'Lucro', 'Margem']],
+                    body: tableData,
+                    startY: 40,
+                });
+            } else if (currentView === 'PRODUCT_PROFIT_ANALYSIS') {
+                const productMap: Record<string, any> = {};
+                filteredSales.forEach(s => {
+                    s.items.forEach(i => {
+                        const key = i.code || i.name;
+                        if (!productMap[key]) productMap[key] = { name: i.name, code: i.code || '-', qty: 0, revenue: 0, cost: 0 };
+                        productMap[key].qty += i.qty;
+                        productMap[key].revenue += (i.appliedPrice * i.qty);
+                        productMap[key].cost += ((i.costPrice || 0) * i.qty);
+                    });
+                });
+                const tableData = Object.values(productMap)
+                    .sort((a: any, b: any) => b.revenue - a.revenue)
+                    .map((item: any) => {
+                        const profit = item.revenue - item.cost;
+                        const avgProfit = item.qty > 0 ? profit / item.qty : 0;
+                        const margin = item.revenue > 0 ? (profit / item.revenue) * 100 : 0;
+                        return [
+                            item.name,
+                            item.qty.toString(),
+                            `R$ ${item.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                            `R$ ${item.cost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                            `R$ ${profit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                            `R$ ${avgProfit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                            `${margin.toFixed(1)}%`
+                        ];
+                    });
+
+                autoTable(doc, {
+                    head: [['Produto', 'Qtd', 'Venda Total', 'Custo Total', 'Lucro Total', 'Lucro Médio', 'Margem Média']],
                     body: tableData,
                     startY: 40,
                 });
@@ -1841,6 +1940,189 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
         );
     };
 
+    const renderSalesProfitDetail = () => {
+        // Flatten items
+        const allItems = filteredSales.flatMap(s =>
+            s.items.map(i => ({
+                saleId: s.id,
+                date: s.timestamp,
+                name: i.name,
+                code: i.code || '-',
+                qty: i.qty,
+                costUnit: i.costPrice || 0,
+                retailUnit: i.retailPrice || 0,
+                appliedUnit: i.appliedPrice || 0,
+                totalRevenue: i.appliedPrice * i.qty,
+                totalCost: (i.costPrice || 0) * i.qty,
+                totalDiscount: ((i.retailPrice || 0) - (i.appliedPrice || 0)) * i.qty
+            }))
+        );
+
+        // Sort by date desc
+        const data = allItems.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+        const totalRevenue = data.reduce((acc, i) => acc + i.totalRevenue, 0);
+        const totalCost = data.reduce((acc, i) => acc + i.totalCost, 0);
+        const totalProfit = totalRevenue - totalCost;
+        const totalMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+
+        return (
+            <div className="space-y-6 animate-fade-in">
+                {/* Summary Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="bg-white p-4 rounded-xl border border-l-4 border-l-emerald-500 shadow-sm">
+                        <p className="text-xs text-gray-500 font-bold uppercase">Receita Total</p>
+                        <p className="text-xl font-black text-emerald-700">R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                    </div>
+                    <div className="bg-white p-4 rounded-xl border border-l-4 border-l-red-500 shadow-sm">
+                        <p className="text-xs text-gray-500 font-bold uppercase">Custo Total (CMV)</p>
+                        <p className="text-xl font-black text-red-700">R$ {totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                    </div>
+                    <div className="bg-white p-4 rounded-xl border border-l-4 border-l-blue-500 shadow-sm">
+                        <p className="text-xs text-gray-500 font-bold uppercase">Lucro Bruto</p>
+                        <p className="text-xl font-black text-blue-700">R$ {totalProfit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                    </div>
+                    <div className="bg-white p-4 rounded-xl border border-l-4 border-l-purple-500 shadow-sm">
+                        <p className="text-xs text-gray-500 font-bold uppercase">Margem Geral</p>
+                        <p className="text-xl font-black text-purple-700">{totalMargin.toFixed(2)}%</p>
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
+                    <table className="w-full text-left text-sm min-w-[900px]">
+                        <thead className="bg-gray-50 text-gray-500 font-bold uppercase">
+                            <tr>
+                                <th className="p-4">Data</th>
+                                <th className="p-4">Produto</th>
+                                <th className="p-4 text-right">Qtd</th>
+                                <th className="p-4 text-right">Venda Total</th>
+                                <th className="p-4 text-right">Custo Total</th>
+                                <th className="p-4 text-right">Lucro</th>
+                                <th className="p-4 text-right">Margem</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {data.map((item, idx) => {
+                                const profit = item.totalRevenue - item.totalCost;
+                                const margin = item.totalRevenue > 0 ? (profit / item.totalRevenue) * 100 : 0;
+                                return (
+                                    <tr key={idx} className="hover:bg-gray-50">
+                                        <td className="p-4 text-gray-500 text-xs">{new Date(item.date).toLocaleDateString('pt-BR')}</td>
+                                        <td className="p-4 font-bold text-gray-700">
+                                            {item.name}
+                                            <span className="block text-[10px] text-gray-400 font-normal">{item.code}</span>
+                                        </td>
+                                        <td className="p-4 text-right">{item.qty}</td>
+                                        <td className="p-4 text-right font-medium text-emerald-600">R$ {item.totalRevenue.toFixed(2)}</td>
+                                        <td className="p-4 text-right text-red-500">R$ {item.totalCost.toFixed(2)}</td>
+                                        <td className="p-4 text-right font-bold text-blue-600">R$ {profit.toFixed(2)}</td>
+                                        <td className="p-4 text-right text-gray-600">{margin.toFixed(1)}%</td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        );
+    };
+
+    const renderProductProfitAnalysis = () => {
+        const productMap: Record<string, {
+            name: string;
+            code: string;
+            qty: number;
+            revenue: number;
+            cost: number;
+        }> = {};
+
+        filteredSales.forEach(s => {
+            s.items.forEach(i => {
+                const key = i.code || i.name;
+                if (!productMap[key]) {
+                    productMap[key] = {
+                        name: i.name,
+                        code: i.code || '-',
+                        qty: 0,
+                        revenue: 0,
+                        cost: 0
+                    };
+                }
+                productMap[key].qty += i.qty;
+                productMap[key].revenue += (i.appliedPrice * i.qty);
+                productMap[key].cost += ((i.costPrice || 0) * i.qty);
+            });
+        });
+
+        const data = Object.values(productMap).sort((a, b) => b.revenue - a.revenue);
+
+        const totalRevenue = data.reduce((acc, i) => acc + i.revenue, 0);
+        const totalCost = data.reduce((acc, i) => acc + i.cost, 0);
+        const totalProfit = totalRevenue - totalCost;
+        const avgMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+
+        return (
+            <div className="space-y-6 animate-fade-in">
+                {/* Summary Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="bg-white p-4 rounded-xl border border-l-4 border-l-emerald-500 shadow-sm">
+                        <p className="text-xs text-gray-500 font-bold uppercase">Receita Total</p>
+                        <p className="text-xl font-black text-emerald-700">R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                    </div>
+                    <div className="bg-white p-4 rounded-xl border border-l-4 border-l-red-500 shadow-sm">
+                        <p className="text-xs text-gray-500 font-bold uppercase">Custo Total (CMV)</p>
+                        <p className="text-xl font-black text-red-700">R$ {totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                    </div>
+                    <div className="bg-white p-4 rounded-xl border border-l-4 border-l-blue-500 shadow-sm">
+                        <p className="text-xs text-gray-500 font-bold uppercase">Lucro Total</p>
+                        <p className="text-xl font-black text-blue-700">R$ {totalProfit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                    </div>
+                    <div className="bg-white p-4 rounded-xl border border-l-4 border-l-purple-500 shadow-sm">
+                        <p className="text-xs text-gray-500 font-bold uppercase">Margem Média</p>
+                        <p className="text-xl font-black text-purple-700">{avgMargin.toFixed(2)}%</p>
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
+                    <table className="w-full text-left text-sm min-w-[900px]">
+                        <thead className="bg-gray-50 text-gray-500 font-bold uppercase">
+                            <tr>
+                                <th className="p-4">Produto</th>
+                                <th className="p-4 text-right">Qtd Vendida</th>
+                                <th className="p-4 text-right">Venda Total</th>
+                                <th className="p-4 text-right">Custo Total</th>
+                                <th className="p-4 text-right">Lucro Total</th>
+                                <th className="p-4 text-right">Lucro Médio</th>
+                                <th className="p-4 text-right">Margem Média</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {data.map((item, idx) => {
+                                const profit = item.revenue - item.cost;
+                                const avgProfit = item.qty > 0 ? profit / item.qty : 0;
+                                const margin = item.revenue > 0 ? (profit / item.revenue) * 100 : 0;
+                                return (
+                                    <tr key={idx} className="hover:bg-gray-50">
+                                        <td className="p-4 font-bold text-gray-700">
+                                            {item.name}
+                                            <span className="block text-[10px] text-gray-400 font-normal">{item.code}</span>
+                                        </td>
+                                        <td className="p-4 text-right">{item.qty}</td>
+                                        <td className="p-4 text-right font-medium text-emerald-600">R$ {item.revenue.toFixed(2)}</td>
+                                        <td className="p-4 text-right text-red-500">R$ {item.cost.toFixed(2)}</td>
+                                        <td className="p-4 text-right font-bold text-blue-600">R$ {profit.toFixed(2)}</td>
+                                        <td className="p-4 text-right font-medium text-blue-500">R$ {avgProfit.toFixed(2)}</td>
+                                        <td className="p-4 text-right text-gray-600">{margin.toFixed(1)}%</td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        );
+    };
+
     const renderGenericGroupReport = (groupKey: 'category' | 'brand' | 'supplier') => {
         const dataMap: Record<string, { value: number, qty: number }> = {};
 
@@ -2064,6 +2346,8 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
                         <h2 className="text-2xl font-bold text-gray-800">
                             {currentView === 'SALES_PERIOD' && 'Vendas por período'}
                             {currentView === 'SALES_COSTS' && 'Detalhes de vendas e custos (DRE)'}
+                            {currentView === 'SALES_PROFIT_DETAIL' && 'Lucros nas Vendas'}
+                            {currentView === 'PRODUCT_PROFIT_ANALYSIS' && 'Lucro dos produtos vendidos'}
                             {currentView === 'PAYMENT_METHODS' && 'Formas de Pagamento'}
                             {currentView === 'PRODUCT_GROUPS' && 'Vendas por Grupos / Categorias'}
                             {currentView === 'BRANDS' && 'Vendas por Marcas'}
@@ -2186,6 +2470,8 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
                 <div className="flex-1 overflow-y-auto pr-2 pb-10">
                     {currentView === 'SALES_PERIOD' && renderSalesPeriod()}
                     {currentView === 'SALES_COSTS' && renderSalesCosts()}
+                    {currentView === 'SALES_PROFIT_DETAIL' && renderSalesProfitDetail()}
+                    {currentView === 'PRODUCT_PROFIT_ANALYSIS' && renderProductProfitAnalysis()}
                     {currentView === 'DRE' && renderDRE()}
                     {currentView === 'PAYMENT_METHODS' && renderPaymentMethods()}
                     {currentView === 'PRODUCT_GROUPS' && renderGenericGroupReport('category')}
@@ -2486,6 +2772,18 @@ const Reports: React.FC<ReportsProps> = ({ sales, products, transactions, curren
                         description="Somatório das vendas em um período, podendo ser agrupadas por dia, mês ou ano."
                         icon={TrendingUp}
                         onClick={() => setCurrentView('SALES_PERIOD')}
+                    />
+                    <ReportMenuCard
+                        title="Lucros nas Vendas"
+                        description="Detalhamento dos produtos das vendas com margens de lucro, descontos, devoluções e CMV em um período."
+                        icon={DollarSign}
+                        onClick={() => setCurrentView('SALES_PROFIT_DETAIL')}
+                    />
+                    <ReportMenuCard
+                        title="Lucro dos produtos vendidos"
+                        description="Detalhamento dos produtos vendidos com custo, margens de lucro médio e quantidades vendidas em um período."
+                        icon={TrendingUp}
+                        onClick={() => setCurrentView('PRODUCT_PROFIT_ANALYSIS')}
                     />
                     <ReportMenuCard
                         title="Detalhes de vendas e custos no período"

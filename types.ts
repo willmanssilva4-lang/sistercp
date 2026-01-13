@@ -46,6 +46,7 @@ export interface Product {
   subcategory?: string; // New field
   brand?: string; // New field
   supplier?: string; // New field
+  department?: string; // New field
   unit: 'UN' | 'KG' | 'L' | 'CX' | 'PCT';
   costPrice: number;
   retailPrice: number;

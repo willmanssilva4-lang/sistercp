@@ -3,6 +3,8 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Product, StockMovement } from '../types';
 import { Plus, Edit, Trash2, Search, Package, Tags, X, Check, Pencil, CreditCard, History, ArrowDown, ArrowUp, ArrowRight, ArrowLeftRight, Scan, Save, Calculator, Upload, FileSpreadsheet, AlertCircle, Layers, AlertTriangle } from 'lucide-react';
 import ExpiryAlerts from './ExpiryAlerts';
+import { supabase } from '../lib/supabaseClient';
+import { usePeople } from '../contexts/PeopleContext';
 
 interface InventoryProps {
     products: Product[];
@@ -40,69 +42,99 @@ const Inventory: React.FC<InventoryProps> = ({ products, stockMovements, onAddPr
     }
     const [inventoryList, setInventoryList] = useState<InventoryItem[]>([]);
 
-    // --- AUXILIARY DATA STATES (LAZY INITIALIZATION) ---
-    const [categories, setCategories] = useState<string[]>(() => {
-        const saved = localStorage.getItem('mm_categories');
-        return saved ? JSON.parse(saved) : ['Geral', 'Bebidas', 'Mercearia', 'Limpeza', 'Hortifruti', 'Padaria', 'Açougue'];
-    });
+    const { suppliers: contextSuppliers, addSupplier: addContextSupplier, updateSupplier: updateContextSupplier, deleteSupplier: deleteContextSupplier } = usePeople();
 
-    const [subcategories, setSubcategories] = useState<string[]>(() => {
-        const saved = localStorage.getItem('mm_subcategories');
-        return saved ? JSON.parse(saved) : ['Refrigerantes', 'Grãos', 'Laticínios', 'Lava Louças'];
-    });
-
-    const [brands, setBrands] = useState<string[]>(() => {
-        const saved = localStorage.getItem('mm_brands');
-        return saved ? JSON.parse(saved) : ['Coca-Cola', 'Camil', 'Ypê', 'Itambé'];
-    });
-
-    const [suppliers, setSuppliers] = useState<string[]>(() => {
-        const saved = localStorage.getItem('mm_suppliers');
-        return saved ? JSON.parse(saved) : ['Coca-Cola FEMSA', 'Camil Alimentos', 'Química Amparo', 'Itambé Laticínios'];
-    });
-
-    const [terminals, setTerminals] = useState<string[]>(() => {
-        const saved = localStorage.getItem('mm_terminals');
-        return saved ? JSON.parse(saved) : [];
-    });
+    // --- AUXILIARY DATA STATES ---
+    const [categories, setCategories] = useState<string[]>([]);
+    const [subcategories, setSubcategories] = useState<string[]>([]);
+    const [brands, setBrands] = useState<string[]>([]);
+    const [departments, setDepartments] = useState<string[]>([]); // New state
+    const [suppliers, setSuppliers] = useState<string[]>([]); // Synced with PeopleContext
+    const [terminals, setTerminals] = useState<string[]>([]);
 
     // --- METADATA STATES ---
-    const [supplierTerms, setSupplierTerms] = useState<Record<string, string>>(() => {
-        const saved = localStorage.getItem('mm_supplier_terms');
-        return saved ? JSON.parse(saved) : {};
-    });
+    const [supplierTerms, setSupplierTerms] = useState<Record<string, string>>({});
+    const [departmentMargins, setDepartmentMargins] = useState<Record<string, number>>({});
+    const [departmentMarkups, setDepartmentMarkups] = useState<Record<string, number>>({});
+    const [terminalRates, setTerminalRates] = useState<Record<string, { debit: number, credit: number, pix: number }>>({});
 
-    const [categoryMargins, setCategoryMargins] = useState<Record<string, number>>(() => {
-        const saved = localStorage.getItem('mm_category_margins');
-        return saved ? JSON.parse(saved) : {};
-    });
+    // --- FETCH DATA FROM SUPABASE ---
+    useEffect(() => {
+        fetchAuxData();
+    }, []);
 
-    const [categoryMarkups, setCategoryMarkups] = useState<Record<string, number>>(() => {
-        const saved = localStorage.getItem('mm_category_markups');
-        return saved ? JSON.parse(saved) : {};
-    });
+    // Sync Suppliers from Context
+    useEffect(() => {
+        if (contextSuppliers) {
+            setSuppliers(contextSuppliers.map(s => s.name).sort());
 
-    const [terminalRates, setTerminalRates] = useState<Record<string, { debit: number, credit: number, pix: number }>>(() => {
-        const saved = localStorage.getItem('mm_terminal_rates');
-        return saved ? JSON.parse(saved) : {};
-    });
+            // Sync terms
+            const terms: Record<string, string> = {};
+            contextSuppliers.forEach(s => {
+                if (s.paymentTerms) terms[s.name] = s.paymentTerms;
+            });
+            setSupplierTerms(terms);
+        }
+    }, [contextSuppliers]);
 
-    // --- AUTOMATIC PERSISTENCE ---
-    useEffect(() => localStorage.setItem('mm_categories', JSON.stringify(categories)), [categories]);
-    useEffect(() => localStorage.setItem('mm_subcategories', JSON.stringify(subcategories)), [subcategories]);
-    useEffect(() => localStorage.setItem('mm_brands', JSON.stringify(brands)), [brands]);
-    useEffect(() => localStorage.setItem('mm_suppliers', JSON.stringify(suppliers)), [suppliers]);
-    useEffect(() => localStorage.setItem('mm_terminals', JSON.stringify(terminals)), [terminals]);
+    const fetchAuxData = async () => {
+        try {
+            // Categories
+            const { data: catData } = await supabase.from('categories').select('*');
+            if (catData) {
+                setCategories(catData.map((c: any) => c.name).sort());
+            }
 
-    useEffect(() => localStorage.setItem('mm_supplier_terms', JSON.stringify(supplierTerms)), [supplierTerms]);
-    useEffect(() => localStorage.setItem('mm_category_margins', JSON.stringify(categoryMargins)), [categoryMargins]);
-    useEffect(() => localStorage.setItem('mm_category_markups', JSON.stringify(categoryMarkups)), [categoryMarkups]);
-    useEffect(() => localStorage.setItem('mm_terminal_rates', JSON.stringify(terminalRates)), [terminalRates]);
+            // Subcategories
+            const { data: subData } = await supabase.from('subcategories').select('*');
+            if (subData) {
+                setSubcategories(subData.map((s: any) => s.name).sort());
+            }
+
+            // Brands
+            const { data: brandData } = await supabase.from('brands').select('*');
+            if (brandData) {
+                setBrands(brandData.map((b: any) => b.name).sort());
+            }
+
+            // Departments
+            const { data: deptData } = await supabase.from('departments').select('*');
+            if (deptData) {
+                setDepartments(deptData.map((d: any) => d.name).sort());
+                const margins: Record<string, number> = {};
+                const markups: Record<string, number> = {};
+                deptData.forEach((d: any) => {
+                    if (d.margin) margins[d.name] = Number(d.margin);
+                    if (d.markup) markups[d.name] = Number(d.markup);
+                });
+                setDepartmentMargins(margins);
+                setDepartmentMarkups(markups);
+            }
+
+            // Terminals
+            const { data: termData } = await supabase.from('terminals').select('*');
+            if (termData) {
+                setTerminals(termData.map((t: any) => t.name).sort());
+                const rates: Record<string, any> = {};
+                termData.forEach((t: any) => {
+                    rates[t.name] = {
+                        debit: Number(t.rate_debit || 0),
+                        credit: Number(t.rate_credit || 0),
+                        pix: Number(t.rate_pix || 0)
+                    };
+                });
+                setTerminalRates(rates);
+            }
+
+        } catch (error) {
+            console.error("Erro ao carregar cadastros auxiliares:", error);
+        }
+    };
 
     const [isAuxModalOpen, setIsAuxModalOpen] = useState(false);
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
     const [isExpiryModalOpen, setIsExpiryModalOpen] = useState(false);
-    const [auxTab, setAuxTab] = useState<'categories' | 'subcategories' | 'brands' | 'suppliers' | 'terminals'>('categories');
+    const [auxTab, setAuxTab] = useState<'categories' | 'subcategories' | 'brands' | 'departments' | 'suppliers' | 'terminals'>('categories');
 
     // Aux Inputs
     const [auxInput, setAuxInput] = useState('');
@@ -116,154 +148,146 @@ const Inventory: React.FC<InventoryProps> = ({ products, stockMovements, onAddPr
 
     const [editingAuxItem, setEditingAuxItem] = useState<string | null>(null);
 
+    // --- DELETE CONFIRMATION STATE ---
+    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+    const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+
     // --- AUX ACTIONS ---
     const currentAuxList = useMemo(() => {
         switch (auxTab) {
             case 'categories': return categories;
             case 'subcategories': return subcategories;
             case 'brands': return brands;
+            case 'departments': return departments;
             case 'suppliers': return suppliers;
             case 'terminals': return terminals;
             default: return [];
         }
-    }, [auxTab, categories, subcategories, brands, suppliers, terminals]);
+    }, [auxTab, categories, subcategories, brands, departments, suppliers, terminals]);
 
     const getSetter = () => {
         switch (auxTab) {
             case 'categories': return setCategories;
             case 'subcategories': return setSubcategories;
             case 'brands': return setBrands;
+            case 'departments': return setDepartments;
             case 'suppliers': return setSuppliers;
             case 'terminals': return setTerminals;
             default: return setCategories;
         }
     };
 
+    // Removed updateMetadata as it is now handled in handleSaveAux
     const updateMetadata = (key: string, isDelete = false) => {
-        if (auxTab === 'suppliers') {
-            setSupplierTerms(prev => {
-                const newTerms = { ...prev };
-                if (isDelete) {
-                    delete newTerms[key];
-                } else if (auxTermInput) {
-                    newTerms[key] = auxTermInput;
-                }
-                return newTerms;
-            });
-        }
-        if (auxTab === 'categories') {
-            setCategoryMargins(prev => {
-                const newMargins = { ...prev };
-                if (isDelete) {
-                    delete newMargins[key];
-                } else if (auxMarginInput) {
-                    const val = parseFloat(auxMarginInput.replace(',', '.'));
-                    if (!isNaN(val)) newMargins[key] = val;
-                }
-                return newMargins;
-            });
-            setCategoryMarkups(prev => {
-                const newMarkups = { ...prev };
-                if (isDelete) {
-                    delete newMarkups[key];
-                } else if (auxMarkupInput) {
-                    const val = parseFloat(auxMarkupInput.replace(',', '.'));
-                    if (!isNaN(val)) newMarkups[key] = val;
-                }
-                return newMarkups;
-            });
-        }
-        if (auxTab === 'terminals') {
-            setTerminalRates(prev => {
-                const newRates = { ...prev };
-                if (isDelete) {
-                    delete newRates[key];
-                } else {
-                    const d = parseFloat(auxDebitInput.replace(',', '.')) || 0;
-                    const c = parseFloat(auxCreditInput.replace(',', '.')) || 0;
-                    const p = parseFloat(auxPixInput.replace(',', '.')) || 0;
-                    newRates[key] = { debit: d, credit: c, pix: p };
-                }
-                return newRates;
-            });
-        }
+        // Deprecated
     };
 
-    const handleSaveAux = (e: React.FormEvent) => {
+    const handleSaveAux = async (e: React.FormEvent) => {
         e.preventDefault();
         const val = auxInput.trim();
         if (!val) return;
 
-        const setter = getSetter();
+        try {
+            if (editingAuxItem) {
+                // UPDATE
+                if (val.toLowerCase() !== editingAuxItem.toLowerCase() && currentAuxList.some(item => item.toLowerCase() === val.toLowerCase())) {
+                    alert('Já existe um item com este nome.');
+                    return;
+                }
 
-        if (editingAuxItem) {
-            if (val.toLowerCase() !== editingAuxItem.toLowerCase() && currentAuxList.some(item => item.toLowerCase() === val.toLowerCase())) {
-                alert('Já existe um item com este nome.');
-                return;
-            }
-
-            setter(prev => prev.map(item => item === editingAuxItem ? val : item).sort());
-
-            if (auxTab === 'suppliers') {
-                setSupplierTerms(prev => {
-                    const copy = { ...prev };
-                    const oldTerm = copy[editingAuxItem];
-                    delete copy[editingAuxItem];
-                    if (auxTermInput) copy[val] = auxTermInput;
-                    else if (oldTerm && val === editingAuxItem) copy[val] = oldTerm;
-                    else if (auxTermInput === '') delete copy[val];
-                    return copy;
-                });
-            }
-            if (auxTab === 'categories') {
-                setCategoryMargins(prev => {
-                    const copy = { ...prev };
-                    const oldData = copy[editingAuxItem];
-                    delete copy[editingAuxItem];
-                    const marginVal = parseFloat(auxMarginInput.replace(',', '.'));
-                    if (!isNaN(marginVal) && auxMarginInput) copy[val] = marginVal;
-                    else if (oldData && !auxMarginInput) copy[val] = oldData;
-                    return copy;
-                });
-                setCategoryMarkups(prev => {
-                    const copy = { ...prev };
-                    const oldData = copy[editingAuxItem];
-                    delete copy[editingAuxItem];
-                    const markupVal = parseFloat(auxMarkupInput.replace(',', '.'));
-                    if (!isNaN(markupVal) && auxMarkupInput) copy[val] = markupVal;
-                    else if (oldData && !auxMarkupInput) copy[val] = oldData;
-                    return copy;
-                });
-            }
-            if (auxTab === 'terminals') {
-                setTerminalRates(prev => {
-                    const copy = { ...prev };
-                    delete copy[editingAuxItem];
+                if (auxTab === 'suppliers') {
+                    const supplierToUpdate = contextSuppliers.find(s => s.name === editingAuxItem);
+                    if (supplierToUpdate) {
+                        await updateContextSupplier({
+                            ...supplierToUpdate,
+                            name: val,
+                            paymentTerms: auxTermInput
+                        });
+                    }
+                } else if (auxTab === 'categories') {
+                    await supabase.from('categories').update({ name: val }).eq('name', editingAuxItem);
+                } else if (auxTab === 'subcategories') {
+                    await supabase.from('subcategories').update({ name: val }).eq('name', editingAuxItem);
+                } else if (auxTab === 'brands') {
+                    await supabase.from('brands').update({ name: val }).eq('name', editingAuxItem);
+                } else if (auxTab === 'departments') {
+                    const marginVal = parseFloat(auxMarginInput.replace(',', '.')) || 0;
+                    const markupVal = parseFloat(auxMarkupInput.replace(',', '.')) || 0;
+                    await supabase.from('departments').update({
+                        name: val,
+                        margin: marginVal,
+                        markup: markupVal
+                    }).eq('name', editingAuxItem);
+                } else if (auxTab === 'terminals') {
                     const d = parseFloat(auxDebitInput.replace(',', '.')) || 0;
                     const c = parseFloat(auxCreditInput.replace(',', '.')) || 0;
                     const p = parseFloat(auxPixInput.replace(',', '.')) || 0;
-                    copy[val] = { debit: d, credit: c, pix: p };
-                    return copy;
-                });
+                    await supabase.from('terminals').update({
+                        name: val,
+                        rate_debit: d,
+                        rate_credit: c,
+                        rate_pix: p
+                    }).eq('name', editingAuxItem);
+                }
+
+                setEditingAuxItem(null);
+            } else {
+                // CREATE
+                if (currentAuxList.some(item => item.toLowerCase() === val.toLowerCase())) {
+                    alert('Este item já está cadastrado.');
+                    return;
+                }
+
+                if (auxTab === 'suppliers') {
+                    await addContextSupplier({
+                        id: crypto.randomUUID(),
+                        name: val,
+                        paymentTerms: auxTermInput,
+                        active: true
+                    } as any);
+                } else if (auxTab === 'categories') {
+                    await supabase.from('categories').insert([{ name: val }]);
+                } else if (auxTab === 'subcategories') {
+                    await supabase.from('subcategories').insert([{ name: val }]);
+                } else if (auxTab === 'brands') {
+                    await supabase.from('brands').insert([{ name: val }]);
+                } else if (auxTab === 'departments') {
+                    const marginVal = parseFloat(auxMarginInput.replace(',', '.')) || 0;
+                    const markupVal = parseFloat(auxMarkupInput.replace(',', '.')) || 0;
+                    await supabase.from('departments').insert([{
+                        name: val,
+                        margin: marginVal,
+                        markup: markupVal
+                    }]);
+                } else if (auxTab === 'terminals') {
+                    const d = parseFloat(auxDebitInput.replace(',', '.')) || 0;
+                    const c = parseFloat(auxCreditInput.replace(',', '.')) || 0;
+                    const p = parseFloat(auxPixInput.replace(',', '.')) || 0;
+                    await supabase.from('terminals').insert([{
+                        name: val,
+                        rate_debit: d,
+                        rate_credit: c,
+                        rate_pix: p
+                    }]);
+                }
             }
 
-            setEditingAuxItem(null);
-        } else {
-            if (currentAuxList.some(item => item.toLowerCase() === val.toLowerCase())) {
-                alert('Este item já está cadastrado.');
-                return;
-            }
-            setter(prev => [...prev, val].sort());
-            updateMetadata(val);
+            // Refresh data
+            await fetchAuxData();
+
+            // Reset inputs
+            setAuxInput('');
+            setAuxTermInput('');
+            setAuxMarginInput('');
+            setAuxMarkupInput('');
+            setAuxDebitInput('');
+            setAuxCreditInput('');
+            setAuxPixInput('');
+
+        } catch (error) {
+            console.error("Erro ao salvar:", error);
+            alert("Erro ao salvar item. Verifique o console.");
         }
-
-        setAuxInput('');
-        setAuxTermInput('');
-        setAuxMarginInput('');
-        setAuxMarkupInput('');
-        setAuxDebitInput('');
-        setAuxCreditInput('');
-        setAuxPixInput('');
     };
 
     const startEditAux = (item: string) => {
@@ -272,9 +296,9 @@ const Inventory: React.FC<InventoryProps> = ({ products, stockMovements, onAddPr
         if (auxTab === 'suppliers') {
             setAuxTermInput(supplierTerms[item] || '');
         }
-        if (auxTab === 'categories') {
-            setAuxMarginInput(categoryMargins[item]?.toString() || '');
-            setAuxMarkupInput(categoryMarkups[item]?.toString() || '');
+        if (auxTab === 'departments') {
+            setAuxMarginInput(departmentMargins[item]?.toString() || '');
+            setAuxMarkupInput(departmentMarkups[item]?.toString() || '');
         }
         if (auxTab === 'terminals') {
             const rates = terminalRates[item] || { debit: 0, credit: 0, pix: 0 };
@@ -295,18 +319,49 @@ const Inventory: React.FC<InventoryProps> = ({ products, stockMovements, onAddPr
         setAuxPixInput('');
     };
 
-    const handleDeleteAux = (itemToDelete: string) => {
-        const setter = getSetter();
-        setter(prev => prev.filter(i => i !== itemToDelete));
-        updateMetadata(itemToDelete, true);
-        if (editingAuxItem === itemToDelete) {
-            cancelEditAux();
+    const handleDeleteAux = (item: string) => {
+        setItemToDelete(item);
+        setIsDeleteConfirmOpen(true);
+    };
+
+    const confirmDeleteAux = async () => {
+        if (!itemToDelete) return;
+
+        try {
+            if (auxTab === 'suppliers') {
+                const supplier = contextSuppliers.find(s => s.name === itemToDelete);
+                if (supplier) {
+                    await deleteContextSupplier(supplier.id);
+                }
+            } else if (auxTab === 'categories') {
+                await supabase.from('categories').delete().eq('name', itemToDelete);
+            } else if (auxTab === 'subcategories') {
+                await supabase.from('subcategories').delete().eq('name', itemToDelete);
+            } else if (auxTab === 'brands') {
+                await supabase.from('brands').delete().eq('name', itemToDelete);
+            } else if (auxTab === 'departments') {
+                await supabase.from('departments').delete().eq('name', itemToDelete);
+            } else if (auxTab === 'terminals') {
+                await supabase.from('terminals').delete().eq('name', itemToDelete);
+            }
+
+            await fetchAuxData();
+
+            if (editingAuxItem === itemToDelete) {
+                cancelEditAux();
+            }
+        } catch (error) {
+            console.error("Erro ao excluir:", error);
+            alert("Erro ao excluir item.");
+        } finally {
+            setIsDeleteConfirmOpen(false);
+            setItemToDelete(null);
         }
     };
 
     // --- PRODUCT FORM STATE ---
     const initialForm = {
-        name: '', code: '', category: 'Geral', subcategory: '', brand: '', supplier: '', unit: 'UN',
+        name: '', code: '', category: 'Geral', subcategory: '', brand: '', supplier: '', department: '', unit: 'UN',
         costPrice: '0,000', retailPrice: '0,000', wholesalePrice: '0,000', wholesaleMinQty: 10,
         stock: 0, minStock: 5, expiryDate: ''
     };
@@ -938,6 +993,7 @@ const Inventory: React.FC<InventoryProps> = ({ products, stockMovements, onAddPr
                             <button onClick={() => { setAuxTab('categories'); cancelEditAux(); }} className={`flex-1 py-3 px-2 text-sm font-bold rounded-t-lg transition-colors whitespace-nowrap ${auxTab === 'categories' ? 'bg-white text-emerald-600 border-t-2 border-emerald-500' : 'text-gray-500 hover:bg-gray-200'}`}>Categorias</button>
                             <button onClick={() => { setAuxTab('subcategories'); cancelEditAux(); }} className={`flex-1 py-3 px-2 text-sm font-bold rounded-t-lg transition-colors whitespace-nowrap ${auxTab === 'subcategories' ? 'bg-white text-emerald-600 border-t-2 border-emerald-500' : 'text-gray-500 hover:bg-gray-200'}`}>Subcategorias</button>
                             <button onClick={() => { setAuxTab('brands'); cancelEditAux(); }} className={`flex-1 py-3 px-2 text-sm font-bold rounded-t-lg transition-colors whitespace-nowrap ${auxTab === 'brands' ? 'bg-white text-emerald-600 border-t-2 border-emerald-500' : 'text-gray-500 hover:bg-gray-200'}`}>Marcas</button>
+                            <button onClick={() => { setAuxTab('departments'); cancelEditAux(); }} className={`flex-1 py-3 px-2 text-sm font-bold rounded-t-lg transition-colors whitespace-nowrap ${auxTab === 'departments' ? 'bg-white text-emerald-600 border-t-2 border-emerald-500' : 'text-gray-500 hover:bg-gray-200'}`}>Departamentos</button>
                             <button onClick={() => { setAuxTab('suppliers'); cancelEditAux(); }} className={`flex-1 py-3 px-2 text-sm font-bold rounded-t-lg transition-colors whitespace-nowrap ${auxTab === 'suppliers' ? 'bg-white text-emerald-600 border-t-2 border-emerald-500' : 'text-gray-500 hover:bg-gray-200'}`}>Fornecedores</button>
                             <button onClick={() => { setAuxTab('terminals'); cancelEditAux(); }} className={`flex-1 py-3 px-2 text-sm font-bold rounded-t-lg transition-colors whitespace-nowrap ${auxTab === 'terminals' ? 'bg-white text-emerald-600 border-t-2 border-emerald-500' : 'text-gray-500 hover:bg-gray-200'}`}>Maquininhas</button>
                         </div>
@@ -974,7 +1030,7 @@ const Inventory: React.FC<InventoryProps> = ({ products, stockMovements, onAddPr
                                         </select>
                                     )}
 
-                                    {auxTab === 'categories' && (
+                                    {auxTab === 'departments' && (
                                         <>
                                             <input
                                                 type="number"
@@ -1053,16 +1109,16 @@ const Inventory: React.FC<InventoryProps> = ({ products, stockMovements, onAddPr
                                                             {supplierTerms[item]}
                                                         </span>
                                                     )}
-                                                    {auxTab === 'categories' && (
+                                                    {auxTab === 'departments' && (
                                                         <div className="flex gap-1">
-                                                            {categoryMargins[item] && (
+                                                            {departmentMargins[item] && (
                                                                 <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded border border-green-200 font-bold">
-                                                                    Mg: {categoryMargins[item]}%
+                                                                    Mg: {departmentMargins[item]}%
                                                                 </span>
                                                             )}
-                                                            {categoryMarkups[item] && (
+                                                            {departmentMarkups[item] && (
                                                                 <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded border border-purple-200 font-bold">
-                                                                    Mk: {categoryMarkups[item]}%
+                                                                    Mk: {departmentMarkups[item]}%
                                                                 </span>
                                                             )}
                                                         </div>
@@ -1142,6 +1198,16 @@ const Inventory: React.FC<InventoryProps> = ({ products, stockMovements, onAddPr
                                     value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })}>
                                     <option value="">Selecione...</option>
                                     {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                            </div>
+
+                            {/* Department */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Departamento</label>
+                                <select className="w-full border p-2 rounded focus:ring-emerald-500 focus:outline-none bg-white"
+                                    value={formData.department || ''} onChange={e => setFormData({ ...formData, department: e.target.value })}>
+                                    <option value="">Selecione...</option>
+                                    {departments.map(d => <option key={d} value={d}>{d}</option>)}
                                 </select>
                             </div>
 
@@ -1428,6 +1494,37 @@ const Inventory: React.FC<InventoryProps> = ({ products, stockMovements, onAddPr
                         </div>
                         <div className="flex-1 overflow-y-auto p-0">
                             <ExpiryAlerts products={products} />
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* --- DELETE CONFIRMATION MODAL --- */}
+            {isDeleteConfirmOpen && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-scale-in">
+                        <div className="p-6 text-center">
+                            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <Trash2 className="text-red-600" size={32} />
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-800 mb-2">Confirmar Exclusão</h3>
+                            <p className="text-gray-600 mb-6">
+                                Tem certeza que deseja excluir "{itemToDelete}"?
+                            </p>
+                            <div className="flex gap-3 justify-center">
+                                <button
+                                    onClick={() => setIsDeleteConfirmOpen(false)}
+                                    className="px-5 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={confirmDeleteAux}
+                                    className="px-5 py-2.5 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition-colors shadow-lg shadow-red-200"
+                                >
+                                    Sim, Excluir
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

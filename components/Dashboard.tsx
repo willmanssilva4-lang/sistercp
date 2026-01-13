@@ -31,7 +31,10 @@ const Dashboard: React.FC<DashboardProps> = ({ products, sales, transactions }) 
     if (!p.expiryDate) return false;
 
     // Usar apenas a data (sem hora) para comparação precisa
-    const today = new Date();
+    // Fix: Ensure we use Brazil date to avoid timezone shifts late at night
+    const brazilDateStr = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+    const [bDay, bMonth, bYear] = brazilDateStr.split('/').map(Number);
+    const today = new Date(bYear, bMonth - 1, bDay);
     today.setHours(0, 0, 0, 0);
 
     // Parse da data de validade evitando problemas de timezone
@@ -46,7 +49,7 @@ const Dashboard: React.FC<DashboardProps> = ({ products, sales, transactions }) 
 
   // Calculate Bills Due Today (Local Time Logic)
   // Convert local date to YYYY-MM-DD for comparison with transaction dueDate
-  const todayLocalYMD = new Date().toLocaleDateString('pt-BR').split('/').reverse().join('-');
+  const todayLocalYMD = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }).split('/').reverse().join('-');
 
   const billsDueToday = transactions.filter(t =>
     t.type === 'EXPENSE' &&
@@ -341,7 +344,7 @@ const Dashboard: React.FC<DashboardProps> = ({ products, sales, transactions }) 
             ) : null}
 
             {lowStockItems.length > 0 && (
-              lowStockItems.slice(0, 5).map(p => (
+              lowStockItems.map(p => (
                 <div key={p.id} className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-100">
                   <span className="text-sm font-medium text-gray-700">{p.name}</span>
                   <span className="text-xs font-bold text-orange-600 bg-orange-100 px-2 py-1 rounded">

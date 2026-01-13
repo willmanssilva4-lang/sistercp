@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Product, Transaction, User } from '../types';
 import { Search, Plus, Trash2, ShoppingCart, Truck, Package, Calendar, DollarSign, Save, X, CheckCircle, CreditCard, ArrowLeftCircle, TrendingUp, ChevronRight, ChevronLeft, FileText } from 'lucide-react';
 import PurchaseSuggestion from './PurchaseSuggestion';
+import { supabase } from '../lib/supabaseClient';
 
 interface PurchasesProps {
     products: Product[];
@@ -60,6 +61,8 @@ const Purchases: React.FC<PurchasesProps> = ({ products, currentUser, onProcessP
     // Carregar Margens e Markups Personalizadas
     const [categoryMargins, setCategoryMargins] = useState<Record<string, number>>({});
     const [categoryMarkups, setCategoryMarkups] = useState<Record<string, number>>({});
+    const [departmentMargins, setDepartmentMargins] = useState<Record<string, number>>({});
+    const [departmentMarkups, setDepartmentMarkups] = useState<Record<string, number>>({});
 
     // Estado do Modal de Sugestão
     const [isSuggestionModalOpen, setIsSuggestionModalOpen] = useState(false);
@@ -83,25 +86,53 @@ const Purchases: React.FC<PurchasesProps> = ({ products, currentUser, onProcessP
             }
         }
 
-        // Load Margins
-        const savedMargins = localStorage.getItem('mm_category_margins');
-        if (savedMargins) {
-            setCategoryMargins(JSON.parse(savedMargins));
-        }
+        // Load Margins/Markups from Supabase (Departments & Categories)
+        const fetchMargins = async () => {
+            try {
+                // Departments
+                const { data: deptData } = await supabase.from('departments').select('*');
+                if (deptData) {
+                    const dMargins: Record<string, number> = {};
+                    const dMarkups: Record<string, number> = {};
+                    deptData.forEach((d: any) => {
+                        if (d.margin) dMargins[d.name] = Number(d.margin);
+                        if (d.markup) dMarkups[d.name] = Number(d.markup);
+                    });
+                    setDepartmentMargins(dMargins);
+                    setDepartmentMarkups(dMarkups);
+                }
 
-        // Load Markups
-        const savedMarkups = localStorage.getItem('mm_category_markups');
-        if (savedMarkups) {
-            setCategoryMarkups(JSON.parse(savedMarkups));
-        }
+                // Categories (Legacy/Fallback)
+                const { data: catData } = await supabase.from('categories').select('*');
+                if (catData) {
+                    const cMargins: Record<string, number> = {};
+                    const cMarkups: Record<string, number> = {};
+                    catData.forEach((c: any) => {
+                        if (c.margin) cMargins[c.name] = Number(c.margin);
+                        if (c.markup) cMarkups[c.name] = Number(c.markup);
+                    });
+                    setCategoryMargins(cMargins);
+                    setCategoryMarkups(cMarkups);
+                }
+            } catch (err) {
+                console.error("Error loading margins:", err);
+            }
+        };
+        fetchMargins();
     }, []);
 
     // --- ACTIONS ---
 
-    const calculateSuggestedPrice = (cost: number, category: string) => {
+    const calculateSuggestedPrice = (cost: number, category: string, department?: string) => {
         if (pricingMode === 'MARGIN') {
-            // margin comes as integer percentage (e.g. 30 for 30%)
-            const marginPercent = categoryMargins[category] !== undefined ? categoryMargins[category] : 30; // Default 30%
+            // Priority: Department > Category > Default (30%)
+            let marginPercent = 30;
+            if (department && departmentMargins[department] !== undefined) {
+                marginPercent = departmentMargins[department];
+            } else if (categoryMargins[category] !== undefined) {
+                marginPercent = categoryMargins[category];
+            }
+
             const marginDecimal = marginPercent / 100;
 
             // Cálculo Margem sobre Venda: Custo / (1 - Margem)
@@ -109,7 +140,14 @@ const Purchases: React.FC<PurchasesProps> = ({ products, currentUser, onProcessP
             return cost / (1 - marginDecimal);
         } else {
             // MARKUP Logic
-            const markupPercent = categoryMarkups[category] !== undefined ? categoryMarkups[category] : 30; // Default 30% if missing
+            // Priority: Department > Category > Default (30%)
+            let markupPercent = 30;
+            if (department && departmentMarkups[department] !== undefined) {
+                markupPercent = departmentMarkups[department];
+            } else if (categoryMarkups[category] !== undefined) {
+                markupPercent = categoryMarkups[category];
+            }
+
             const markupDecimal = markupPercent / 100;
 
             // Cálculo Markup sobre Custo: Custo * (1 + Markup)
@@ -531,7 +569,7 @@ const Purchases: React.FC<PurchasesProps> = ({ products, currentUser, onProcessP
                                                 </thead>
                                                 <tbody className="divide-y divide-gray-100">
                                                     {cart.map((item, idx) => {
-                                                        const suggestedPrice = calculateSuggestedPrice(item.costPrice, item.category);
+                                                        const suggestedPrice = calculateSuggestedPrice(item.costPrice, item.category, item.department);
                                                         return (
                                                             <tr key={idx} className="hover:bg-gray-50 group">
                                                                 <td className="p-2">

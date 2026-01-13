@@ -262,27 +262,27 @@ const Finance: React.FC<FinanceProps> = ({ transactions, onAddTransaction, onUpd
 
     return (
         <div className="p-4 md:p-6 space-y-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="flex flex-col gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-800">Módulo Financeiro</h2>
+                    <h2 className="text-2xl font-bold text-gray-800">Financeiro</h2>
                     <p className="text-gray-500 text-sm">Gestão de fluxo de caixa e contas</p>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 justify-end">
                     <button
                         onClick={() => onNavigate && onNavigate('profit-margin')}
-                        className="bg-purple-600 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 hover:bg-purple-700 shadow-lg shadow-purple-200 transition-all"
+                        className="bg-emerald-600 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition-all"
                     >
                         <TrendingUp size={20} /> Margem de Lucro
                     </button>
                     <button
                         onClick={() => setIsCashRegisterModalOpen(true)}
-                        className="bg-indigo-600 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all"
+                        className="bg-emerald-600 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition-all"
                     >
                         <Wallet size={20} /> Controle de Caixa
                     </button>
                     <button
                         onClick={() => setIsPayModalOpen(true)}
-                        className="bg-orange-500 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 hover:bg-orange-600 shadow-lg shadow-orange-200 transition-all relative"
+                        className="bg-emerald-600 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition-all relative"
                     >
                         <AlertCircle size={20} /> Contas a Pagar
                         {stats.pendingPayable > 0 && (
@@ -293,7 +293,7 @@ const Finance: React.FC<FinanceProps> = ({ transactions, onAddTransaction, onUpd
                     </button>
                     <button
                         onClick={() => setIsCategoryModalOpen(true)}
-                        className="bg-white border border-gray-200 text-gray-700 px-4 py-2.5 rounded-xl flex items-center gap-2 hover:bg-gray-50 transition-colors shadow-sm"
+                        className="bg-emerald-600 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition-all"
                     >
                         <Tags size={20} /> Categorias
                     </button>
